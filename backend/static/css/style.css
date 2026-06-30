@@ -1,0 +1,359 @@
+/* ===================================================
+   HealthBot AI — Global Stylesheet
+   style.css
+=================================================== */
+
+/* ── Tokens ─────────────────────────────────────── */
+:root {
+  --blue-900:   #0d1f4f;
+  --blue-800:   #0f2d6b;
+  --blue-700:   #1558a8;
+  --blue-600:   #1d6fa8;
+  --blue-400:   #60a5fa;
+  --blue-100:   #dbeafe;
+  --green-500:  #22c55e;
+  --green-400:  #4ade80;
+  --green-100:  #dcfce7;
+  --slate-900:  #0f172a;
+  --slate-800:  #1e293b;
+  --slate-700:  #334155;
+  --slate-400:  #94a3b8;
+  --slate-200:  #e2e8f0;
+  --white:      #ffffff;
+  --font:       'Inter', 'Segoe UI', system-ui, sans-serif;
+  --radius-xl:  1rem;
+  --radius-lg:  0.75rem;
+  --shadow-md:  0 4px 24px rgba(13,31,79,0.18);
+  --shadow-lg:  0 8px 40px rgba(13,31,79,0.28);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: var(--slate-900);
+  color: var(--white);
+  min-height: 100vh;
+}
+
+
+/* ── Sidebar Layout ──────────────────────────────── */
+.app-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--blue-900) 0%, #091533 100%);
+  border-right: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin-bottom: 1rem;
+  text-decoration: none;
+}
+
+.sidebar-brand .brand-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--blue-600), var(--green-500));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; color: #fff;
+  box-shadow: 0 4px 12px rgba(29,111,168,0.4);
+  flex-shrink: 0;
+}
+
+.sidebar-brand .brand-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.sidebar-brand .brand-name span { color: var(--green-400); }
+
+.sidebar-nav { flex: 1; }
+
+.nav-item-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-lg);
+  color: rgba(255,255,255,0.65);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  margin-bottom: 0.25rem;
+}
+
+.nav-item-link:hover,
+.nav-item-link.active {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.nav-item-link.active { background: rgba(29,111,168,0.35); color: var(--blue-400); }
+
+.nav-item-link i { font-size: 1.05rem; width: 20px; text-align: center; }
+
+.sidebar-footer {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 1rem;
+}
+
+/* ── Main content ────────────────────────────────── */
+.main-content {
+  margin-left: 260px;
+  flex: 1;
+  min-width: 0;       /* prevent flex blowout past sidebar */
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: rgba(15,23,42,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+}
+
+.topbar-title { font-weight: 700; font-size: 1.15rem; }
+
+.content-area { padding: 2rem; flex: 1; }
+
+
+/* ── Auth Pages ──────────────────────────────────── */
+.auth-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(29,111,168,0.35) 0%, transparent 65%),
+    var(--slate-900);
+  display: flex; align-items: center; justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.auth-card {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-lg);
+}
+
+.auth-logo {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--blue-600), var(--green-500));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: #fff;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 6px 20px rgba(29,111,168,0.4);
+}
+
+.form-control-dark {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 0.75rem 1rem !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control-dark:focus {
+  border-color: var(--blue-400) !important;
+  box-shadow: 0 0 0 3px rgba(96,165,250,0.18) !important;
+  outline: none !important;
+}
+
+.form-control-dark::placeholder { color: rgba(255,255,255,0.35) !important; }
+
+.form-select-dark {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: #fff !important;
+  border-radius: var(--radius-lg) !important;
+  padding: 0.75rem 1rem !important;
+}
+
+.btn-primary-health {
+  background: linear-gradient(135deg, var(--blue-700), var(--blue-600));
+  color: #fff; border: none;
+  border-radius: var(--radius-lg);
+  padding: 0.8rem 1.5rem;
+  font-weight: 600; font-size: 0.95rem;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px rgba(29,111,168,0.35);
+  width: 100%;
+}
+
+.btn-primary-health:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(29,111,168,0.45);
+  color: #fff;
+}
+
+.btn-primary-health:active { transform: translateY(0); }
+
+
+/* ── Dashboard Cards ─────────────────────────────── */
+.stat-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; margin-bottom: 1rem;
+}
+
+/* Alert severity colors */
+.severity-badge-low      { background: rgba(34,197,94,0.15);  color: #4ade80;  border: 1px solid rgba(34,197,94,0.3);  }
+.severity-badge-medium   { background: rgba(250,204,21,0.15); color: #fde047; border: 1px solid rgba(250,204,21,0.3); }
+.severity-badge-high     { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
+.severity-badge-critical { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3);  }
+
+.alert-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1.5rem;
+  transition: border-color 0.2s;
+}
+
+.alert-card:hover { border-color: rgba(96,165,250,0.3); }
+
+
+/* ── Disease Cards ───────────────────────────────── */
+.disease-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  height: 100%;
+  display: flex; flex-direction: column;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+.disease-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(29,111,168,0.4);
+  box-shadow: 0 12px 40px rgba(29,111,168,0.15);
+}
+
+.disease-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(29,111,168,0.25), rgba(34,197,94,0.15));
+  border: 1px solid rgba(29,111,168,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; margin-bottom: 1rem;
+}
+
+.symptom-tag {
+  display: inline-block;
+  background: rgba(96,165,250,0.12);
+  border: 1px solid rgba(96,165,250,0.25);
+  color: var(--blue-400);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  margin: 0.15rem;
+}
+
+.btn-read-more {
+  background: transparent;
+  border: 1px solid rgba(29,111,168,0.5);
+  color: var(--blue-400);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem; font-weight: 500;
+  margin-top: auto;
+  transition: all 0.2s;
+}
+
+.btn-read-more:hover {
+  background: rgba(29,111,168,0.2);
+  color: #fff;
+  border-color: var(--blue-400);
+}
+
+
+/* ── Vaccine Cards ───────────────────────────────── */
+.vaccine-card {
+  background: rgba(34,197,94,0.04);
+  border: 1px solid rgba(34,197,94,0.15);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem 1.5rem;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+
+.vaccine-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(34,197,94,0.12);
+}
+
+
+/* ── Modals ──────────────────────────────────────── */
+.modal-content {
+  background: var(--slate-800) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 1.25rem !important;
+  color: #fff !important;
+}
+
+.modal-header { border-bottom: 1px solid rgba(255,255,255,0.08) !important; }
+.modal-footer { border-top:    1px solid rgba(255,255,255,0.08) !important; }
+
+
+/* ── Flash Messages ──────────────────────────────── */
+.flash-area { position: fixed; top: 1rem; right: 1rem; z-index: 9999; min-width: 300px; }
+.flash-area .alert { border-radius: var(--radius-lg); border: none; }
+
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main-content { margin-left: 0; }
+  .content-area { padding: 1rem; }
+}
