@@ -513,8 +513,8 @@ def api_history():
 # =============================================================
 #  Bootstrap & Run
 # =============================================================
+import os
+
 if __name__ == "__main__":
-    init_db()          # Create tables + seed data on first run
-    print("\n  [OK]  HealthBot AI is running!")
-    print("  -->  Open: http://localhost:5000\n")
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
