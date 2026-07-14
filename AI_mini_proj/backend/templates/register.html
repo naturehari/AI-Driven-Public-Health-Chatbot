@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Register — HealthBot AI{% endblock %}
+
+{% block body %}
+<div class="auth-page">
+
+  <div class="flash-area">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'danger' else ('success' if category == 'success' else 'info') }} alert-dismissible fade show">
+          {{ message }}
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <div class="auth-card" style="max-width:480px;">
+    <div class="auth-logo">
+      <i class="bi bi-person-plus-fill"></i>
+    </div>
+
+    <h4 class="text-center fw-bold mb-1">Create Your Account</h4>
+    <p class="text-center mb-4" style="color:rgba(255,255,255,0.5);font-size:0.9rem;">
+      Join HealthBot AI — free, multilingual health guidance
+    </p>
+
+    <form action="/register" method="POST" novalidate>
+      <div class="mb-3">
+        <label class="form-label fw-medium" style="font-size:0.85rem;color:rgba(255,255,255,0.7);">Full Name</label>
+        <input type="text" name="name" class="form-control form-control-dark"
+               placeholder="Arjun Kumar" required />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-medium" style="font-size:0.85rem;color:rgba(255,255,255,0.7);">Email Address</label>
+        <input type="email" name="email" class="form-control form-control-dark"
+               placeholder="you@example.com" required />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-medium" style="font-size:0.85rem;color:rgba(255,255,255,0.7);">Password</label>
+        <input type="password" name="password" class="form-control form-control-dark"
+               placeholder="Min. 8 characters" required minlength="8" />
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-medium" style="font-size:0.85rem;color:rgba(255,255,255,0.7);">Preferred Language</label>
+        <select name="preferred_language" class="form-select form-select-dark">
+          <option value="en">English</option>
+          <option value="ta">Tamil (தமிழ்)</option>
+          <option value="hi">Hindi (हिन्दी)</option>
+          <option value="te">Telugu (తెలుగు)</option>
+          <option value="kn">Kannada (ಕನ್ನಡ)</option>
+          <option value="ml">Malayalam (മലയാളം)</option>
+        </select>
+      </div>
+
+      <button type="submit" class="btn btn-primary-health">
+        <i class="bi bi-person-check me-2"></i> Create Account
+      </button>
+    </form>
+
+    <p class="text-center mt-4 mb-0" style="font-size:0.875rem;color:rgba(255,255,255,0.5);">
+      Already have an account?
+      <a href="/login" style="color:#60a5fa;font-weight:600;">Sign in &rarr;</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

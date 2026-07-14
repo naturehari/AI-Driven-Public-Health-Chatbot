@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}Disease Awareness — HealthBot AI{% endblock %}
+
+{% block body %}
+<div class="app-wrapper">
+
+  {% include "partials/sidebar.html" %}
+
+  <div class="main-content">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn p-0 d-md-none" id="sidebarToggle" style="color:#fff;">
+          <i class="bi bi-list fs-4"></i>
+        </button>
+        <span class="topbar-title">
+          <i class="bi bi-virus2 me-2" style="color:#f87171;"></i>Disease Awareness
+        </span>
+      </div>
+      <div style="color:rgba(255,255,255,0.55);font-size:0.85rem;">
+        {{ diseases|length }} diseases in database
+      </div>
+    </div>
+
+    <div class="content-area">
+
+      <!-- Header -->
+      <div class="mb-5">
+        <h2 class="fw-bold mb-2">Disease Awareness Centre</h2>
+        <p style="color:rgba(255,255,255,0.5);max-width:560px;font-size:0.95rem;">
+          Evidence-based information on common diseases—symptoms, prevention strategies,
+          and trusted resources to help you stay informed and safe.
+        </p>
+      </div>
+
+      <!-- Search Bar -->
+      <div class="mb-5 d-flex gap-3 flex-wrap">
+        <div class="flex-grow-1" style="max-width:420px;">
+          <div class="input-group">
+            <span class="input-group-text"
+                  style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-right:none;color:rgba(255,255,255,0.4);">
+              <i class="bi bi-search"></i>
+            </span>
+            <input type="text" id="diseaseSearch" class="form-control form-control-dark"
+                   placeholder="Search diseases…"
+                   style="border-left:none !important;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Disease Cards Grid -->
+      <div class="row g-4" id="diseaseGrid">
+        {% for disease in diseases %}
+        <div class="col-12 col-sm-6 col-xl-4 disease-col" data-name="{{ disease.name | lower }}">
+          <div class="disease-card">
+
+            <!-- Icon -->
+            <div class="disease-icon">
+              {% set icons = ['🦟','🧫','🦠','🌡️','💊','🔬'] %}
+              {{ icons[loop.index0 % 6] }}
+            </div>
+
+            <!-- Name -->
+            <h5 class="fw-bold mb-2">{{ disease.name }}</h5>
+
+            <!-- Symptom tags (first 4) -->
+            <div class="mb-3">
+              {% set symptom_list = disease.symptoms.split(',') %}
+              {% for sym in symptom_list[:4] %}
+                <span class="symptom-tag">{{ sym.strip() }}</span>
+              {% endfor %}
+              {% if symptom_list|length > 4 %}
+                <span class="symptom-tag">+{{ symptom_list|length - 4 }} more</span>
+              {% endif %}
+            </div>
+
+            <!-- Short symptom description -->
+            <p style="font-size:0.82rem;color:rgba(255,255,255,0.5);line-height:1.55;flex:1;">
+              {{ disease.symptoms[:100] }}{% if disease.symptoms|length > 100 %}…{% endif %}
+            </p>
+
+            <!-- Read More button -->
+            <button class="btn btn-read-more mt-3"
+                    data-bs-toggle="modal"
+                    data-bs-target="#diseaseModal{{ disease.id }}">
+              <i class="bi bi-info-circle me-1"></i> Read More
+            </button>
+          </div>
+        </div>
+
+        <!-- ── Modal for this disease ── -->
+        <div class="modal fade" id="diseaseModal{{ disease.id }}" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title fw-bold">
+                  <i class="bi bi-activity me-2" style="color:#60a5fa;"></i>
+                  {{ disease.name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body px-4 py-4">
+
+                <!-- Symptoms -->
+                <div class="mb-4">
+                  <h6 class="fw-semibold mb-3" style="color:#f87171;">
+                    <i class="bi bi-thermometer-half me-2"></i>Symptoms
+                  </h6>
+                  <div class="d-flex flex-wrap gap-1">
+                    {% for sym in disease.symptoms.split(',') %}
+                      <span class="symptom-tag">{{ sym.strip() }}</span>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <hr style="border-color:rgba(255,255,255,0.08);" />
+
+                <!-- Prevention -->
+                <div class="mb-4">
+                  <h6 class="fw-semibold mb-3" style="color:#4ade80;">
+                    <i class="bi bi-shield-check me-2"></i>Prevention Tips
+                  </h6>
+                  <p style="font-size:0.9rem;color:rgba(255,255,255,0.75);line-height:1.7;">
+                    {{ disease.prevention }}
+                  </p>
+                </div>
+
+                {% if disease.info_link %}
+                <hr style="border-color:rgba(255,255,255,0.08);" />
+                <div>
+                  <h6 class="fw-semibold mb-2" style="color:#60a5fa;">
+                    <i class="bi bi-link-45deg me-2"></i>Trusted Source
+                  </h6>
+                  <a href="{{ disease.info_link }}" target="_blank" rel="noopener noreferrer"
+                     style="color:#60a5fa;font-size:0.85rem;word-break:break-all;">
+                    {{ disease.info_link }}
+                    <i class="bi bi-box-arrow-up-right ms-1"></i>
+                  </a>
+                </div>
+                {% endif %}
+
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-sm px-4 py-2 rounded-3 fw-medium"
+                        style="background:rgba(255,255,255,0.07);color:#fff;border:1px solid rgba(255,255,255,0.1);"
+                        data-bs-dismiss="modal">Close</button>
+                <a href="/chat" class="btn btn-sm px-4 py-2 rounded-3 fw-medium"
+                   style="background:linear-gradient(135deg,#1558a8,#1d6fa8);color:#fff;">
+                  <i class="bi bi-chat-dots me-1"></i> Ask HealthBot
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+          <div class="text-center py-5" style="color:rgba(255,255,255,0.4);">
+            <i class="bi bi-database-x fs-1 mb-3 d-block"></i>
+            No disease data available. Run <code>schema.sql</code> to seed the database.
+          </div>
+        </div>
+        {% endfor %}
+      </div><!-- /diseaseGrid -->
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Mobile sidebar
+  const sidebar = document.querySelector('.sidebar');
+  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+  });
+
+  // Live search filter
+  document.getElementById('diseaseSearch').addEventListener('input', function () {
+    const query = this.value.toLowerCase().trim();
+    document.querySelectorAll('.disease-col').forEach(col => {
+      const name = col.dataset.name || '';
+      col.style.display = name.includes(query) ? '' : 'none';
+    });
+  });
+</script>
+{% endblock %}
