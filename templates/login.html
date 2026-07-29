@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Login — HealthBot AI{% endblock %}
+
+{% block body %}
+<div class="auth-page">
+
+  <!-- Flash Messages -->
+  <div class="flash-area">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'danger' else ('success' if category == 'success' else 'info') }} alert-dismissible fade show">
+          {{ message }}
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <div class="auth-card">
+    <!-- Logo -->
+    <div class="auth-logo">
+      <i class="bi bi-heart-pulse-fill"></i>
+    </div>
+
+    <h4 class="text-center fw-bold mb-1">Welcome Back</h4>
+    <p class="text-center mb-4" style="color:rgba(255,255,255,0.5); font-size:0.9rem;">
+      Sign in to your HealthBot AI account
+    </p>
+
+    <form action="/login" method="POST" novalidate>
+      <div class="mb-3">
+        <label class="form-label fw-medium" style="font-size:0.85rem; color:rgba(255,255,255,0.7);">
+          Email Address
+        </label>
+        <div class="input-group">
+          <span class="input-group-text" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-right:none;color:rgba(255,255,255,0.4);">
+            <i class="bi bi-envelope"></i>
+          </span>
+          <input type="email" name="email" class="form-control form-control-dark"
+                 placeholder="you@example.com" required
+                 style="border-left:none !important;" />
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-medium" style="font-size:0.85rem; color:rgba(255,255,255,0.7);">
+          Password
+        </label>
+        <div class="input-group">
+          <span class="input-group-text" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-right:none;color:rgba(255,255,255,0.4);">
+            <i class="bi bi-lock"></i>
+          </span>
+          <input type="password" id="password" name="password" class="form-control form-control-dark"
+                 placeholder="••••••••" required
+                 style="border-left:none !important;border-right:none !important;" />
+          <button class="input-group-text" type="button" id="togglePw"
+                  style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-left:none;color:rgba(255,255,255,0.4);cursor:pointer;">
+            <i class="bi bi-eye" id="eyeIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary-health">
+        <i class="bi bi-box-arrow-in-right me-2"></i> Sign In
+      </button>
+    </form>
+
+    <p class="text-center mt-4 mb-0" style="font-size:0.875rem; color:rgba(255,255,255,0.5);">
+      Don't have an account?
+      <a href="/register" style="color:#60a5fa; font-weight:600;">Create one &rarr;</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('togglePw').addEventListener('click', function () {
+    const pw = document.getElementById('password');
+    const icon = document.getElementById('eyeIcon');
+    if (pw.type === 'password') {
+      pw.type = 'text';
+      icon.className = 'bi bi-eye-slash';
+    } else {
+      pw.type = 'password';
+      icon.className = 'bi bi-eye';
+    }
+  });
+</script>
+{% endblock %}
