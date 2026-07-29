@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ai-public-health-chatbot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+    autoDeploy: true

@@ -139,7 +139,7 @@ except ImportError:
     print("[AI] google.generativeai not installed -- running keyword-fallback mode.")
 
 app = Flask(__name__)
-app.secret_key = "healthbot-dev-secret-key-change-in-prod"
+app.secret_key = os.environ.get("SECRET_KEY", "healthbot-dev-secret-key-change-in-prod")
 
 # ─── Database path (created automatically on first run) ───
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
