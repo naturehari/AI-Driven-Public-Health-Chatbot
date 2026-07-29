@@ -311,6 +311,12 @@ def init_db():
     db.close()
 
 
+# ── Initialise DB on every cold start (works with gunicorn / Render) ──
+# Uses CREATE TABLE IF NOT EXISTS so existing data is never overwritten.
+with app.app_context():
+    init_db()
+
+
 # =============================================================
 #  Auth guard
 # =============================================================
