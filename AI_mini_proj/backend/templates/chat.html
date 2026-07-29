@@ -22,6 +22,104 @@
     margin-left: 260px;   /* matches sidebar width */
     min-width: 0;         /* prevent flex blowout */
   }
+  /* ── Nearby Hospital Results ───────────────────── */
+#hospital-results {
+  padding: 0 1.5rem 1rem;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.hospital-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+}
+
+.hospital-card h4 {
+  color: #fff;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+}
+
+.hospital-card p {
+  color: rgba(255,255,255,0.65);
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.hospital-btn {
+  background: #dc3545;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+/* Hospital Finder */
+.hospital-finder {
+  padding: 1rem 1.5rem;
+  background: rgba(255,255,255,0.03);
+  border-top: 1px solid rgba(255,255,255,0.07);
+  display: none;
+}
+
+.hospital-finder h3 {
+  color: #fff;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.hospital-or {
+  text-align: center;
+  color: rgba(255,255,255,0.4);
+  margin: 0.75rem 0;
+  font-size: 0.8rem;
+}
+
+.hospital-search-box {
+  display: flex;
+  gap: 0.5rem;
+}
+
+#hospitalLocationInput {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #fff;
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  outline: none;
+}
+
+#hospitalLocationInput::placeholder {
+  color: rgba(255,255,255,0.4);
+}
+
+.hospital-search-btn {
+  background: #1558a8;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.hospital-search-btn:hover {
+  opacity: 0.9;
+}
+
+@media (max-width: 600px) {
+  .hospital-search-box {
+    flex-direction: column;
+  }
+}
+
+.hospital-btn:hover {
+  opacity: 0.9;
+}
 
   /* Mobile: sidebar hides, panel fills full width */
   @media (max-width: 768px) {
@@ -107,6 +205,39 @@
     border-bottom-right-radius: 4px;
     color: #fff;
     box-shadow: 0 2px 12px rgba(29,111,168,0.3);
+  }
+
+  .emergency-alert-card {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.4);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 0.25rem;
+    color: #fff;
+    max-width: 85%;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.15);
+  }
+
+  .emergency-alert-card h4 {
+    color: #ff6b6b;
+    margin-bottom: 0.4rem;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .emergency-alert-card p {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 0.75rem;
+  }
+
+  .emergency-alert-card .hospital-btn {
+    background: #dc3545;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
   }
 
   .msg-time {
@@ -324,6 +455,50 @@
       </div>
 
     </div>
+    
+    <!-- Hospital Finder -->
+<div class="hospital-finder">
+
+  <h3>🏥 Find Hospitals</h3>
+
+  <!-- Nearby Hospital Button -->
+  <button
+    type="button"
+    class="hospital-btn"
+    onclick="findNearbyHospitals()">
+    📍 Find Nearby Hospitals
+  </button>
+
+  <div class="hospital-or">OR</div>
+
+  <!-- Search by City / Area -->
+  <div class="hospital-search-box">
+
+    <input
+      type="text"
+      id="hospitalLocationInput"
+      placeholder="Enter city or area (e.g. Karur, Gandhigramam)"
+    >
+
+    <button
+      type="button"
+      class="hospital-search-btn"
+      onclick="searchHospitalsByLocation()">
+      🔎 Search
+    </button>
+
+  </div>
+
+</div>
+
+<!-- Hospital Results -->
+<div id="hospital-results"></div>
+
+    <!-- Nearby Hospital Results -->
+    <div id="hospital-results"></div>
+
+
+
 
     <!-- Input Area -->
     <div class="chat-input-area">
@@ -490,6 +665,210 @@ function speak(text) {
   window.speechSynthesis.speak(utter);
 }
 
+// ── Search Hospitals by City / Area ────────────────
+async function searchHospitalsByLocation() {
+
+  const input =
+    document.getElementById('hospitalLocationInput');
+
+  const location =
+    input.value.trim();
+
+  if (!location) {
+    alert('Please enter a city or area name.');
+    return;
+  }
+
+  const resultsEl =
+    document.getElementById('hospital-results');
+
+  resultsEl.innerHTML =
+    '<p style="color:white;">🔎 Searching hospitals...</p>';
+
+  try {
+
+    const response =
+      await fetch('/api/search-hospitals', {
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+          location: location
+        })
+      });
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || 'Search failed'
+      );
+    }
+
+    if (
+      !data.hospitals ||
+      data.hospitals.length === 0
+    ) {
+
+      resultsEl.innerHTML =
+        '<p style="color:white;">❌ No hospitals found for this location.</p>';
+
+      return;
+    }
+
+    displayHospitals(
+      data.hospitals
+    );
+
+  } catch (error) {
+
+    console.error(
+      '[Hospital Location Search Error]',
+      error
+    );
+
+    resultsEl.innerHTML =
+      '<p style="color:#ff6b6b;">⚠️ Unable to search hospitals. Please try again.</p>';
+  }
+} 
+// ── Find Nearby Hospitals ──────────────────────────
+async function findNearbyHospitals() {
+
+  if (!navigator.geolocation) {
+
+    alert(
+      'Location is not supported by your browser.'
+    );
+
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+
+    async function(position) {
+
+      const latitude =
+        position.coords.latitude;
+
+      const longitude =
+        position.coords.longitude;
+
+      try {
+
+        const response =
+          await fetch(
+            '/api/nearby-hospitals',
+            {
+              method: 'POST',
+
+              headers: {
+                'Content-Type':
+                  'application/json'
+              },
+
+              body: JSON.stringify({
+                latitude:
+                  latitude,
+
+                longitude:
+                  longitude
+              })
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !data.hospitals ||
+          data.hospitals.length === 0
+        ) {
+
+          alert(
+            'No nearby hospitals found.'
+          );
+
+          return;
+        }
+
+        displayHospitals(
+          data.hospitals
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        alert(
+          'Unable to find nearby hospitals.'
+        );
+      }
+    },
+
+    function(error) {
+
+      console.error(
+        'Location error:',
+        error
+      );
+
+      alert(
+        'Please allow location access to find nearby hospitals.'
+      );
+    }
+  );
+}
+
+
+// ── Display Nearby Hospitals ───────────────────────
+function displayHospitals(hospitals) {
+
+  let html =
+    '<h3>🏥 Nearby Hospitals</h3>';
+
+  hospitals.forEach(
+    function(hospital) {
+
+      html += `
+        <div class="hospital-card">
+
+          <h4>
+            ${escapeHtml(hospital.name)}
+          </h4>
+
+          <p>
+            ${escapeHtml(hospital.address)}
+          </p>
+
+          <a
+            href="${hospital.maps_url}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-primary"
+          >
+            📍 Get Directions
+          </a>
+
+        </div>
+      `;
+    }
+  );
+
+  document.getElementById(
+    'hospital-results'
+  ).innerHTML = html;
+
+  document.getElementById(
+    'hospital-results'
+  ).scrollIntoView({
+    behavior: 'smooth'
+  });
+}
+
 // ── Send Message ────────────────────────────────────
 async function sendMessage() {
   const text = inputEl.value.trim();
@@ -521,11 +900,54 @@ async function sendMessage() {
     if (!res.ok) throw new Error('Server error ' + res.status);
 
     const data = await res.json();
-    const reply = data.reply || 'Sorry, I could not process that request.';
 
-    appendMessage(reply, 'bot', data.timestamp);
-    speak(reply);
+const reply =
+  data.reply ||
+  'Sorry, I could not process that request.';
 
+appendMessage(
+  reply,
+  'bot',
+  data.timestamp
+);
+
+speak(reply);
+
+
+// ── Hospital UI Visibility Logic ─────────────
+const hospitalFinder = document.querySelector('.hospital-finder');
+if (hospitalFinder) {
+  if (data.emergency === true) {
+    hospitalFinder.style.display = 'block';
+  } else {
+    hospitalFinder.style.display = 'none';
+  }
+}
+
+// ── Show Emergency Alert Card ─────────────
+if (data.emergency) {
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  
+  row.innerHTML = `
+    <div class="msg-avatar-sm" style="background:linear-gradient(135deg,#dc3545,#ff6b6b);">
+      <i class="bi bi-exclamation-triangle-fill" style="color:#fff;"></i>
+    </div>
+    <div>
+      <div class="emergency-alert-card">
+        <h4><i class="bi bi-shield-exclamation"></i> Emergency Detected</h4>
+        <p>Since your symptoms appear serious, please locate the nearest hospitals immediately or call emergency services.</p>
+        <button class="hospital-btn" onclick="findNearbyHospitals()">
+          📍 Find Nearby Hospitals
+        </button>
+      </div>
+      <div class="msg-time">System · ${data.timestamp || getTime()}</div>
+    </div>
+  `;
+
+  messagesEl.appendChild(row);
+  scrollToBottom();
+}
   } catch (err) {
     hideTyping();
     appendMessage(

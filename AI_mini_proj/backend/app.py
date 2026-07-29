@@ -8,6 +8,8 @@
 
 import os
 import sqlite3
+import re
+import requests
 from datetime import datetime
 from functools import wraps
 
@@ -34,23 +36,99 @@ except ImportError:
 try:
     import google.generativeai as genai
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
     if GEMINI_API_KEY:
         genai.configure(api_key=GEMINI_API_KEY)
+
         _gemini_model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name="gemini-2.0-flash",
             system_instruction=(
-                "You are HealthBot AI, a professional public health assistant. "
-                "Provide clear, accurate, and compassionate health information. Always:\n"
-                "- Give practical, actionable health guidance based on described symptoms.\n"
-                "- Use brief bullet points when listing symptoms or steps.\n"
-                "- Mention red flag symptoms that require urgent doctor visits.\n"
-                "- Cover: disease info, symptom guidance, prevention, vaccination, first aid.\n"
-                "- Be warm, professional, and reassuring -- never alarmist.\n"
-                "- End every response with: 'For a definitive diagnosis, please consult a qualified healthcare professional.'\n"
-                "- Keep responses concise (under 200 words) and easy to read.\n"
-                "- If asked about non-health topics, politely redirect to health questions."
+                "You are HealthBot AI, a friendly, professional, and compassionate public health assistant. "
+                "Your goal is to have a natural conversation with the user and provide safe, useful health information.\n\n"
+
+                "IMPORTANT CONVERSATION RULE:\n"
+                "When a user reports a symptom or health problem such as fever, cough, headache, stomach pain, vomiting, diarrhea, body pain, etc., "
+                "do not immediately give a long medical answer. First, understand the user's situation through a natural conversation.\n\n"
+
+                "For symptom-related conversations, ask relevant questions ONE AT A TIME. "
+                "Do not ask all questions in a single message. "
+                "Start by asking the user's age when appropriate. "
+                "Then ask how long the symptom has been present. "
+                "Next ask about severity and other important symptoms. "
+                "Ask only the questions that are relevant to the user's situation.\n\n"
+
+                "Example conversation:\n"
+                "User: I have fever.\n"
+                "Assistant: I'm sorry you're not feeling well. May I know your age?\n"
+                "User: 21.\n"
+                "Assistant: Thank you. How many days have you had the fever?\n"
+                "User: 3 days.\n"
+                "Assistant: I see. Would you describe the fever as mild, moderate, or severe? Do you know your temperature?\n"
+                "User: Moderate, around 38.5°C.\n"
+                "Assistant: Do you have any other symptoms, such as cough, headache, body pain, vomiting, rash, or breathing difficulty?\n\n"
+                "SEVERE SYMPTOM AND HOSPITAL FLOW:\n"
+                "After collecting age, duration, symptoms, and severity confirmation:\n"
+                "If the user reports severe pain, difficulty breathing, fainting, heavy bleeding, unconsciousness, or any severity is confirmed as severe/emergency:\n"
+                "First, immediately provide:\n"
+                "- Immediate first aid steps\n"
+                "- Safety precautions\n"
+                "- A clear warning message\n\n"
+                
+                "Then, QUICKLY in the same message, ask the user which city they are currently in to enable hospital assistance.\n"
+                "IMPORTANT: Do not skip first aid advice. Do not wait for a long conversation after severe confirmation. Ask for the location immediately after giving emergency guidance.\n\n"
+                
+                "Example format for severe cases:\n"
+                "\'⚠️ This may require urgent medical attention.\n\n"
+                "First aid:\n"
+                "- Rest immediately\n"
+                "- Stay calm\n"
+                "- Follow basic safety steps\n\n"
+                "If symptoms continue or worsen, seek medical help.\n\n"
+                "Which city are you currently in?\'\n\n"
+                
+                "MILD OR NORMAL SYMPTOM FLOW:\n"
+                "If the symptoms are mild or moderate, DO NOT ask for location.\n"
+                "After collecting age, duration, symptoms, and severity:\n"
+                "Provide:\n"
+                "- Possible common causes (without diagnosing)\n"
+                "- Home care tips\n"
+                "- Food suggestions\n"
+                "- OTC medicine guidance if suitable\n"
+                "- Clear warning signs that indicate when to consult a doctor\n\n"
+
+                "MEDICINE GUIDANCE:\n"
+                "If appropriate, you may mention commonly available over-the-counter medicines in general terms, "
+                "but do not prescribe prescription medicines or strong medicines. "
+                "Always mention that the user should follow the medicine label or consult a healthcare professional, "
+                "especially for children, pregnant users, elderly users, or people with existing medical conditions.\n\n"
+
+                "THANK YOU FLOW:\n"
+                "If the user says thank you, thanks, or expresses gratitude, respond warmly and briefly, "
+                "for example: 'You're welcome! Take care and get well soon. 😊'\n\n"
+                "After collecting enough relevant information, provide a concise personalized response containing:\n"
+                "- A brief summary of what the symptoms could indicate, without giving a confirmed diagnosis.\n"
+                "- Practical home-care and self-care tips.\n"
+                "- Hydration, rest, diet, or other relevant supportive advice.\n"
+                "- Prevention tips when relevant.\n"
+                "- Clear warning signs that require urgent medical attention.\n"
+                "- When the user should consult a doctor or healthcare professional.\n\n"
+
+                "Always consider the user's age, symptom duration, severity, and other symptoms when giving guidance. "
+                "Never claim certainty or diagnose a disease based only on chat information. "
+                "If symptoms suggest a possible emergency, clearly advise the user to seek immediate medical care.\n\n"
+
+                "Be warm, empathetic, conversational, and easy to understand. "
+                "Avoid sounding like a search engine or a medical textbook. "
+                "Use short paragraphs and bullet points when useful. "
+                "Keep responses concise, generally under 250 words.\n\n"
+
+                "For non-health-related questions, politely explain that you are designed to help with health and public health topics.\n\n"
+
+                "End medical guidance with: "
+                "'For a definitive diagnosis, please consult a qualified healthcare professional.'"
             )
         )
+
         GEMINI_AVAILABLE = True
         print("[AI] Gemini 1.5 Flash loaded successfully.")
     else:
@@ -74,8 +152,11 @@ DATABASE  = os.path.join(BASE_DIR, "healthbot.db")
 def get_db():
     """Return a per-request SQLite connection."""
     if "db" not in g:
-        g.db = sqlite3.connect(DATABASE, detect_types=sqlite3.PARSE_DECLTYPES)
-        g.db.row_factory = sqlite3.Row   # rows behave like dicts
+        g.db = sqlite3.connect(
+            DATABASE,
+            detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        g.db.row_factory = sqlite3.Row
     return g.db
 
 
@@ -303,6 +384,302 @@ HEALTH_KB = {
     "weight loss": "Healthy weight loss requires a balance of burning more calories than you consume, regular exercise, and eating nutrient-dense foods. Avoid extreme crash diets.",
     "sleep": "Good sleep hygiene involves 7-9 hours of sleep, avoiding screens an hour before bed, and maintaining a consistent sleep schedule. Poor sleep can weaken your immune system."
 }
+# =============================================================
+# Emergency / Severe Symptom Detection
+# =============================================================
+# =============================================================
+# Best Hospitals by City
+# =============================================================
+
+BEST_HOSPITALS = {
+
+    "karur": [
+        "Velan Hospital",
+        "Apollo Reach Hospital",
+        "Amaravathi Hospital",
+        "Government Medical College Hospital"
+    ],
+
+    "chennai": [
+        "Apollo Hospital",
+        "MIOT Hospital",
+        "Fortis Malar Hospital",
+        "SIMS Hospital"
+    ],
+
+    "coimbatore": [
+        "KMCH",
+        "Ganga Hospital",
+        "PSG Hospital",
+        "Royal Care Hospital"
+    ],
+
+    "madurai": [
+        "Meenakshi Mission Hospital",
+        "Apollo Speciality Hospital",
+        "Velammal Hospital"
+    ]
+}
+
+EMERGENCY_KEYWORDS = [
+    # Severe pain
+    "severe pain",
+    "very severe pain",
+    "extreme pain",
+    "unbearable pain",
+    "worst pain",
+    "excruciating pain",
+
+    # Breathing emergency
+    "difficulty breathing",
+    "breathing difficulty",
+    "shortness of breath",
+    "cannot breathe",
+    "can't breathe",
+
+    # Severe chest pain
+    "severe chest pain",
+    "crushing chest pain",
+    "chest pain and difficulty breathing",
+    "chest pain is severe",
+    "chest pain very bad",
+    "chest pain",
+
+    # Bleeding
+    "heavy bleeding",
+    "severe bleeding",
+    "vomiting blood",
+    "coughing blood",
+
+    # Fever and Abdominal
+    "high fever",
+    "severe abdominal pain",
+    "severe stomach pain",
+
+    # Other emergencies
+    "unconscious",
+    "not responding",
+    "fainting",
+    "fainted",
+    "seizure",
+    "stroke",
+    "face drooping",
+    "slurred speech",
+    "severe allergic reaction",
+    "anaphylaxis",
+    "choking"
+]
+
+
+def detect_emergency(message):
+    """
+    Detect potentially serious emergency symptoms.
+    Hospital assistance will be enabled only when
+    severe or emergency symptoms are detected.
+    """
+
+    message = message.lower().strip()
+
+    for keyword in EMERGENCY_KEYWORDS:
+        if keyword in message:
+            return True
+
+    return False
+# =============================================================
+# Nearby Hospital Search using OpenStreetMap
+# =============================================================
+
+@app.route("/api/nearby-hospitals", methods=["POST"])
+@login_required
+def nearby_hospitals():
+
+    data = request.get_json(silent=True) or {}
+
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+
+    if latitude is None or longitude is None:
+        return jsonify({
+            "error": "Location is required."
+        }), 400
+
+    try:
+
+        query = f"""
+        [out:json][timeout:25];
+        (
+          node["amenity"="hospital"](around:20000,{latitude},{longitude});
+          way["amenity"="hospital"](around:20000,{latitude},{longitude});
+          relation["amenity"="hospital"](around:20000,{latitude},{longitude});
+        );
+        out center;
+        """
+
+        overpass_servers = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter"
+        ]
+
+        response = None
+
+        for server in overpass_servers:
+
+            try:
+
+                print(
+                    f"[Hospital Search] Trying server: {server}"
+                )
+
+                temp_response = requests.post(
+                    server,
+                    data=query,
+                    headers={
+                        "User-Agent": "HealthBot-AI/1.0"
+                    },
+                    timeout=30
+                )
+
+                if temp_response.status_code == 200:
+
+                    response = temp_response
+
+                    print(
+                        f"[Hospital Search] Success: {server}"
+                    )
+
+                    break
+
+                else:
+
+                    print(
+                        f"[Hospital Search] Failed: "
+                        f"{server} - Status {temp_response.status_code}"
+                    )
+
+            except requests.exceptions.RequestException as e:
+
+                print(
+                    f"[Hospital Search] Server failed: "
+                    f"{server} - {e}"
+                )
+
+        if response is None:
+
+            return jsonify({
+                "error": "All hospital search services are currently unavailable."
+            }), 503
+
+        
+        response.raise_for_status()
+
+        result = response.json()
+        print("OVERPASS STATUS:", response.status_code)
+        print("OVERPASS RESPONSE:", result)
+
+        hospitals = []
+
+        for item in result.get("elements", []):
+
+            tags = item.get("tags", {})
+
+            name = tags.get(
+                "name",
+                "Unnamed Hospital"
+            )
+
+            # Node hospital
+            if "lat" in item and "lon" in item:
+
+                hospital_lat = item["lat"]
+                hospital_lon = item["lon"]
+
+            # Way / Relation hospital
+            else:
+
+                center = item.get("center", {})
+
+                hospital_lat = center.get("lat")
+                hospital_lon = center.get("lon")
+
+            if hospital_lat is None or hospital_lon is None:
+                continue
+
+            # Address
+            address_parts = []
+
+            for key in [
+                "addr:housenumber",
+                "addr:street",
+                "addr:city",
+                "addr:postcode"
+            ]:
+                if tags.get(key):
+                    address_parts.append(tags[key])
+
+            address = ", ".join(address_parts)
+
+            if not address:
+                address = "Address not available"
+
+            hospitals.append({
+                "name": name,
+                "latitude": hospital_lat,
+                "longitude": hospital_lon,
+                "address": address,
+                "maps_url":
+                    f"https://www.google.com/maps/dir/?api=1"
+                    f"&destination={hospital_lat},{hospital_lon}"
+            })
+
+        # Remove duplicate hospitals
+        unique_hospitals = []
+        seen = set()
+
+        for hospital in hospitals:
+
+            key = (
+                hospital["name"],
+                hospital["latitude"],
+                hospital["longitude"]
+            )
+
+            if key not in seen:
+                seen.add(key)
+                unique_hospitals.append(hospital)
+
+        # Limit to 10 hospitals
+        unique_hospitals = unique_hospitals[:10]
+
+        print(
+            f"[Hospital Search] Found {len(unique_hospitals)} hospitals"
+        )
+
+        return jsonify({
+            "hospitals": unique_hospitals
+        })
+
+    except requests.exceptions.RequestException as e:
+
+        print(
+            "[Hospital Search Network Error]",
+            e
+        )
+
+        return jsonify({
+            "error": "Hospital search service is temporarily unavailable."
+        }), 500
+
+    except Exception as e:
+
+        print(
+            "[Hospital Search Error]",
+            e
+        )
+
+        return jsonify({
+            "error": "Unable to find nearby hospitals."
+        }), 500
 
 import re
 
@@ -339,7 +716,9 @@ def gemini_respond(message: str, user_id: int) -> str:
         return response.text.strip()
 
     except Exception as e:
-        print(f"[Gemini Error] {e}")
+        error_msg = str(e)
+        print(f"[Gemini Error] {error_msg}")
+        # Silently fall back — never show raw error to user
         return _keyword_fallback(message)
 
 
@@ -461,37 +840,445 @@ def api_chat():
     # 1. Translate incoming message to English
     try:
         if language != "en" and GoogleTranslator:
-            english_message = GoogleTranslator(source=language, target='en').translate(message)
+            english_message = GoogleTranslator(
+                source=language,
+                target="en"
+            ).translate(message)
         else:
             english_message = message
+
     except Exception:
         english_message = message
 
-    # 2. Get AI / Fallback reply in English
-    english_reply = gemini_respond(english_message, session["user_id"])
 
-    # 3. Translate reply back to user's language
+    # =========================================================
+    # 2. Conversation State Management
+    # =========================================================
+    msg_lower = english_message.lower()
+    emergency = False
+    
+    symptoms_list = ["fever", "cough", "headache", "chest pain", "stomach pain", "vomiting", "diarrhea", "body pain", "cold"]
+    chat_state = session.get("chat_state", "")
+
+    # Thank you handler — always respond warmly regardless of state
+    thankyou_words = ["thank you", "thanks", "thank u", "thankyou", "thx", "ty", "நன்றி", "ధన్యవాదాలు", "धन्यवाद"]
+    if any(t in msg_lower for t in thankyou_words):
+        session["chat_state"] = ""  # Reset any ongoing state
+        english_reply = (
+            "You're welcome! 😊\n\n"
+            "Get well soon and take care of yourself! 🌿\n\n"
+            "If you ever need health guidance again, feel free to chat with me anytime. I'm always here to help! 💙"
+        )
+    
+    # Step 1: Detect symptoms and start flow
+    elif any(s in msg_lower for s in symptoms_list) and chat_state == "":
+        session["chat_state"] = "waiting_for_age"
+        english_reply = "I'm sorry you're not feeling well.\nMay I know your age?"
+        
+    # Step 2: Waiting for age
+    elif chat_state == "waiting_for_age":
+        session["user_age"] = english_message
+        session["chat_state"] = "waiting_for_duration"
+        english_reply = "How long have you had this problem?"
+        
+    # Step 3: Waiting for duration
+    elif chat_state == "waiting_for_duration":
+        session["symptom_days"] = english_message
+        session["chat_state"] = "waiting_for_symptoms"
+        english_reply = "Can you describe your symptoms in more detail?"
+        
+    # Step 4: Waiting for symptoms details
+    elif chat_state == "waiting_for_symptoms":
+        session["symptoms"] = english_message
+        session["chat_state"] = "waiting_for_severity"
+        english_reply = "Is it mild, moderate, or severe?"
+        
+    # Step 5: Waiting for severity
+    elif chat_state == "waiting_for_severity":
+        session["severity"] = english_message
+        session["chat_state"] = "" # Reset state
+        
+        is_severe = "severe" in msg_lower or detect_emergency(session.get("symptoms", "")) or detect_emergency(english_message)
+        
+        if is_severe:
+            emergency = True
+            prompt = f"""
+User Age: {session.get('user_age')}
+Duration: {session.get('symptom_days')}
+Symptoms: {session.get('symptoms')}
+Severity: {english_message}
+
+This is a severe case.
+Respond exactly in this structure:
+
+⚠️ Your symptoms may require urgent medical attention.
+
+Possible reasons:
+- [Reason 1]
+- [Reason 2]
+
+Immediate First Aid & Tips:
+✅ [Safety step 1]
+✅ [Safety step 2]
+✅ [Helpful tip]
+
+Please share your city/location so I can find nearby hospitals.
+"""
+        else:
+            prompt = f"""
+User Age: {session.get('user_age')}
+Duration: {session.get('symptom_days')}
+Symptoms: {session.get('symptoms')}
+Severity: {english_message}
+
+This is a mild/moderate case. Do NOT ask for location.
+Respond exactly in this structure:
+
+Based on your symptoms:
+
+Possible reasons:
+- [Reason 1]
+- [Reason 2]
+
+Home care:
+✅ [Tip 1]
+✅ [Tip 2]
+
+Food suggestions:
+✅ [Food 1]
+
+Consult a doctor if:
+⚠️ [Warning sign]
+"""
+        english_reply = gemini_respond(prompt, session["user_id"])
+        
+        # If Gemini is unavailable (quota/offline), use built-in structured response
+        if "offline mode" in english_reply.lower() or "quota" in english_reply.lower() or "api" in english_reply[:10].lower():
+            symptoms_text = session.get('symptoms', 'your symptoms')
+            age = session.get('user_age', 'you')
+            days = session.get('symptom_days', 'a few days')
+            
+            if is_severe:
+                english_reply = f"""⚠️ Your symptoms may require urgent medical attention.
+
+Based on what you've shared (Age: {age}, Duration: {days}, Symptoms: {symptoms_text}):
+
+Possible reasons:
+- Infection or inflammation
+- Dehydration or electrolyte imbalance
+- Underlying medical condition that needs attention
+
+Immediate First Aid & Tips:
+✅ Lie down and rest immediately — avoid any physical exertion
+✅ Stay calm and breathe slowly and deeply
+✅ Drink small sips of water if you are conscious and able to swallow
+✅ Do NOT take any medicine without medical advice in this condition
+✅ Ask someone to stay with you — do not be alone
+
+Please share your city/location so I can find nearby hospitals for you."""
+            else:
+                english_reply = f"""Based on your symptoms (Age: {age}, Duration: {days}, Symptoms: {symptoms_text}):
+
+Possible reasons:
+- Common viral or bacterial infection
+- Fatigue, stress, or dietary imbalance
+- Seasonal changes affecting your health
+
+Home care:
+✅ Rest as much as possible — avoid strenuous activity
+✅ Drink plenty of fluids (water, coconut water, ORS if needed)
+✅ Monitor your temperature/symptoms every few hours
+✅ Take paracetamol for fever or pain if needed (follow label instructions)
+
+Food suggestions:
+✅ Light foods: rice porridge (kanji), idli, soups, bananas
+✅ Avoid oily, spicy, or heavy food
+✅ Warm liquids like ginger tea or turmeric milk can help
+
+Consult a doctor if:
+⚠️ Symptoms worsen or do not improve within 2-3 days
+⚠️ High fever (above 39°C / 102°F) that doesn't reduce
+⚠️ Difficulty breathing, chest pain, or severe vomiting
+
+For a definitive diagnosis, please consult a qualified healthcare professional."""
+
+    else:
+        # General chat or follow-up
+        if detect_emergency(english_message):
+            emergency = True
+        
+        # Keep emergency flag true if we are in the middle of a severe follow-up (like asking for city)
+        last_reply = session.get("last_bot_reply", "").lower()
+        if "which city are you currently in" in last_reply:
+            emergency = True
+            
+        english_reply = gemini_respond(english_message, session["user_id"])
+    
+    session["last_bot_reply"] = english_reply
+
+    # =========================================================
+    # 4. Translate reply back to user's language
+    # =========================================================
     try:
         if language != "en" and GoogleTranslator:
-            reply = GoogleTranslator(source='en', target=language).translate(english_reply)
+            reply = GoogleTranslator(source="en", target=language).translate(english_reply)
         else:
             reply = english_reply
     except Exception:
         reply = english_reply
 
-    # Persist chat history
+    # =========================================================
+    # 5. Persist chat history
+    # =========================================================
     try:
         query_db(
             "INSERT INTO chat_history (user_id, message, response, language) VALUES (?,?,?,?)",
             (session["user_id"], message, reply, language),
             commit=True
         )
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[Database Error] {e}")
 
-    return jsonify({"reply": reply, "timestamp": datetime.now().strftime("%H:%M")})
+    # =========================================================
+    # 6. Return response to chat.html
+    # =========================================================
+    return jsonify({
+        "reply": reply,
+        "emergency": emergency,
+        "timestamp": datetime.now().strftime("%H:%M")
+    })
+    # =============================================================
+# Nearby Hospital Search
+# =============================================================
 
 
+# =============================================================
+# Search Hospitals by City / Area using OpenStreetMap
+# =============================================================
+
+@app.route("/api/search-hospitals", methods=["POST"])
+@login_required
+def search_hospitals():
+
+    data = request.get_json(silent=True) or {}
+
+    location = data.get("location", "").strip()
+
+    if not location:
+        return jsonify({
+            "error": "Please enter a city or area name."
+        }), 400
+
+    try:
+
+        # Step 1: Convert city/area name into latitude & longitude
+        geocode_url = "https://nominatim.openstreetmap.org/search"
+
+        geocode_response = requests.get(
+            geocode_url,
+            params={
+                "q": location,
+                "format": "json",
+                "limit": 1
+            },
+            headers={
+                "User-Agent": "HealthBot-AI/1.0"
+            },
+            timeout=15
+        )
+
+        geocode_response.raise_for_status()
+
+        locations = geocode_response.json()
+
+        if not locations:
+            return jsonify({
+                "error": "Location not found."
+            }), 404
+
+        latitude = float(
+            locations[0]["lat"]
+        )
+
+        longitude = float(
+            locations[0]["lon"]
+        )
+
+        # Step 2: Search hospitals around that location
+        query = f"""
+        [out:json][timeout:25];
+        (
+          node["amenity"="hospital"](around:20000,{latitude},{longitude});
+          way["amenity"="hospital"](around:20000,{latitude},{longitude});
+          relation["amenity"="hospital"](around:20000,{latitude},{longitude});
+        );
+        out center;
+        """
+
+        overpass_servers = [
+            "https://overpass-api.de/api/interpreter",
+            "https://overpass.kumi.systems/api/interpreter",
+            "https://overpass.private.coffee/api/interpreter"
+        ]
+
+        response = None
+
+        for server in overpass_servers:
+
+            try:
+
+                print(
+                    f"[Hospital Search] Trying server: {server}"
+                )
+
+                temp_response = requests.post(
+                    server,
+                    data=query,
+                    headers={
+                        "User-Agent": "HealthBot-AI/1.0"
+                    },
+                    timeout=30
+                )
+
+                if temp_response.status_code == 200:
+
+                    response = temp_response
+
+                    print(
+                        f"[Hospital Search] Success: {server}"
+                    )
+
+                    break
+
+            except requests.exceptions.RequestException as e:
+
+                print(
+                    f"[Hospital Search] Server failed: {server} - {e}"
+                )
+
+        if response is None:
+
+            return jsonify({
+                "error": "Hospital search services are currently unavailable."
+            }), 503
+
+        response.raise_for_status()
+
+        result = response.json()
+
+        hospitals = []
+
+        for item in result.get("elements", []):
+
+            tags = item.get("tags", {})
+
+            name = tags.get(
+                "name",
+                "Unnamed Hospital"
+            )
+
+            # Node
+            if "lat" in item and "lon" in item:
+
+                hospital_lat = item["lat"]
+                hospital_lon = item["lon"]
+
+            # Way / Relation
+            else:
+
+                center = item.get("center", {})
+
+                hospital_lat = center.get("lat")
+                hospital_lon = center.get("lon")
+
+            if hospital_lat is None or hospital_lon is None:
+                continue
+
+            # Address
+            address_parts = []
+
+            for key in [
+                "addr:housenumber",
+                "addr:street",
+                "addr:city",
+                "addr:postcode"
+            ]:
+
+                if tags.get(key):
+                    address_parts.append(
+                        tags[key]
+                    )
+
+            address = ", ".join(
+                address_parts
+            )
+
+            if not address:
+                address = location
+
+            hospitals.append({
+                "name": name,
+                "latitude": hospital_lat,
+                "longitude": hospital_lon,
+                "address": address,
+                "maps_url":
+                    f"https://www.google.com/maps/dir/?api=1"
+                    f"&destination={hospital_lat},{hospital_lon}"
+            })
+
+        # Remove duplicates
+        unique_hospitals = []
+        seen = set()
+
+        for hospital in hospitals:
+
+            key = (
+                hospital["name"],
+                hospital["latitude"],
+                hospital["longitude"]
+            )
+
+            if key not in seen:
+
+                seen.add(key)
+
+                unique_hospitals.append(
+                    hospital
+                )
+
+        # Limit results
+        unique_hospitals = unique_hospitals[:10]
+
+        print(
+            f"[Hospital Search] {location} - "
+            f"Found {len(unique_hospitals)} hospitals"
+        )
+
+        return jsonify({
+            "hospitals": unique_hospitals
+        })
+
+    except requests.exceptions.RequestException as e:
+
+        print(
+            "[Hospital Search Network Error]",
+            e
+        )
+
+        return jsonify({
+            "error": "Hospital search service is temporarily unavailable."
+        }), 500
+
+    except Exception as e:
+
+        print(
+            "[Hospital Search Error]",
+            e
+        )
+
+        return jsonify({
+            "error": "Unable to search hospitals."
+        }), 500
 @app.route("/api/alerts")
 def api_alerts():
     alerts = query_db("SELECT * FROM health_alerts ORDER BY date_issued DESC")
