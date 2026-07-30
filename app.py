@@ -32,99 +32,84 @@ try:
 except ImportError:
     pass
 
-# ── Gemini AI ─────────────────────────────────────────────────
+# ── Gemini AI Setup ────────────────────────────────────────────
+GEMINI_AVAILABLE = False
+genai = None
+GEMINI_MODEL = "gemini-1.5-flash"
+
+SYSTEM_INSTRUCTION = (
+    "You are HealthBot AI, a friendly, empathetic, professional, and highly knowledgeable public health assistant. "
+    "Your goal is to engage in a real, interactive, multi-turn conversation whenever a user mentions ANY disease, illness, health condition, or symptom.\n\n"
+
+    "MANDATORY MULTI-TURN CONVERSATION FLOW (FOLLOW EVERY SINGLE TIME FOR ANY DISEASE OR HEALTH TOPIC):\n"
+    "Whenever the user mentions ANY disease (e.g., Dengue, Malaria, Typhoid, COVID-19, Cholera, Tuberculosis, Asthma, Diabetes, Hypertension, Hepatitis, Jaundice, Chickenpox, Measles, Pneumonia, Migraine, Kidney Stones, Gastritis, Arthritis, Anemia, Eczema, Stroke, Appendicitis, or any other disease) OR any symptom/pain:\n\n"
+
+    "STEP 1: Acknowledge the specific disease or symptom empathetically, and ask ONLY for the user's AGE.\n"
+    "Example: 'I am sorry to hear that you are concerned about Dengue Fever. To provide personalized health advice, could you please tell me your age?'\n\n"
+
+    "STEP 2: Once age is provided, ask ONLY for their current CITY or LOCATION.\n"
+    "Example: 'Thank you. Which city or location are you currently in? (This helps check for local health context and hospital support if needed).'\n\n"
+
+    "STEP 3: Once city is provided, ask ONLY for DURATION.\n"
+    "Example: 'Got it. How long have you had symptoms or been experiencing this condition?'\n\n"
+
+    "STEP 4: Once duration is provided, ask ONLY for SEVERITY (mild, moderate, or severe).\n"
+    "Example: 'Would you describe the symptoms right now as mild, moderate, or severe?'\n\n"
+
+    "STEP 5: Once severity is provided, ask ONLY if there are ANY OTHER ASSOCIATED SYMPTOMS.\n"
+    "Example: 'Are there any other symptoms present (such as high fever, rash, nausea, body aches, or breathing difficulty)?'\n\n"
+
+    "STEP 6: Once ALL 5 details (Age, City, Duration, Severity, Associated Symptoms) are collected, provide a COMPREHENSIVE PERSONALIZED ADVISORY REPORT including:\n"
+    "  - Disease Explanation & Overview (tailored to their age group)\n"
+    "  - Customized Risk Assessment based on their duration, severity, and city\n"
+    "  - Practical Home Care & Rest Guidelines\n"
+    "  - Food, Hydration & Dietary Recommendations\n"
+    "  - Safe OTC Medication Guidance (general terms like Paracetamol; strict warnings against contraindicated drugs like Aspirin/Ibuprofen for Dengue)\n"
+    "  - Prevention & Sanitation Measures\n"
+    "  - Clear Red-Flag Warning Signs requiring immediate medical/hospital care\n"
+    "  - End every report with: 'For a definitive diagnosis and prescription treatment, please consult a qualified medical professional.'\n\n"
+
+    "CRITICAL RULES:\n"
+    "- NEVER ask more than ONE question per turn during Steps 1-5.\n"
+    "- NEVER jump straight to advice without gathering Age, City, Duration, Severity, and Symptoms.\n"
+    "- IF THE USER REPORTS SEVERE SYMPTOMS or an emergency (difficulty breathing, chest pain, fainting, heavy bleeding):\n"
+    "  Provide immediate First Aid instructions, urge them to visit an emergency room, and ask for their city if not already provided so nearby hospitals can be located.\n\n"
+
+    "Be warm, empathetic, clear, and well-structured using markdown bolding and bullet points."
+)
+
 try:
     import google.generativeai as genai
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-
-    if GEMINI_API_KEY:
-        genai.configure(api_key=GEMINI_API_KEY)
-
-        _gemini_model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            system_instruction=(
-                "You are HealthBot AI, a friendly, professional, and compassionate public health assistant. "
-                "Your goal is to have a natural conversation with the user and provide safe, useful health information.\n\n"
-
-                "MANDATORY CONVERSATION FLOW — FOLLOW THIS EVERY TIME:\n"
-                "When a user reports ANY symptom or health problem (fever, cough, headache, throat pain, stomach pain, etc.), "
-                "you MUST collect the following information in ORDER, ONE question at a time, before giving any advice:\n"
-                "  STEP 1 — Ask for the user's AGE. (Always — no exceptions)\n"
-                "  STEP 2 — Ask which CITY they are currently in. (Always — needed for local health context)\n"
-                "  STEP 3 — Ask how long the symptom has been present.\n"
-                "  STEP 4 — Ask about severity (mild / moderate / severe).\n"
-                "  STEP 5 — Ask if there are any other associated symptoms.\n"
-                "  STEP 6 — Then provide personalised advice based on ALL collected info.\n\n"
-
-                "CRITICAL RULES:\n"
-                "- NEVER skip Step 1 (age) or Step 2 (city) — even for mild symptoms.\n"
-                "- Ask ONE question per message. Do not combine multiple questions.\n"
-                "- Do not give medical advice until Steps 1–5 are complete.\n\n"
-
-                "Example conversation:\n"
-                "User: I have a throat pain.\n"
-                "Assistant: I'm sorry to hear that! To help you better, may I know your age?\n"
-                "User: 21.\n"
-                "Assistant: Thank you. Which city are you currently in?\n"
-                "User: Chennai.\n"
-                "Assistant: Got it. How long have you had the throat pain?\n"
-                "User: 2 days.\n"
-                "Assistant: Would you describe it as mild, moderate, or severe?\n"
-                "User: Mild.\n"
-                "Assistant: Do you have any other symptoms like fever, cough, or difficulty swallowing?\n"
-                "User: Just a bit of cough.\n"
-                "Assistant: [Now give personalised advice based on age 21, Chennai, 2 days, mild, with cough]\n\n"
-
-                "SEVERE SYMPTOM FLOW:\n"
-                "If the user confirms severity is severe/emergency (difficulty breathing, severe chest pain, fainting, etc.):\n"
-                "- Immediately provide first aid steps and a warning message.\n"
-                "- Suggest nearby hospitals in the city they mentioned in Step 2.\n"
-                "- Advise them to call emergency services immediately.\n\n"
-
-                "MILD OR MODERATE SYMPTOM FLOW:\n"
-                "After collecting all 5 steps of information, provide:\n"
-                "- Possible common causes (without diagnosing)\n"
-                "- Home care tips tailored to their age and city\n"
-                "- Food and hydration suggestions\n"
-                "- OTC medicine guidance if appropriate\n"
-                "- Clear warning signs indicating when to see a doctor\n\n"
-
-                "MEDICINE GUIDANCE:\n"
-                "You may mention commonly available over-the-counter medicines in general terms. "
-                "Do not prescribe prescription medicines. "
-                "Always remind the user to follow the medicine label and consult a healthcare professional, "
-                "especially for children, pregnant users, elderly, or those with existing medical conditions.\n\n"
-
-                "THANK YOU FLOW:\n"
-                "If the user says thank you or expresses gratitude, respond warmly: "
-                "'You're welcome! Take care and get well soon. 😊'\n\n"
-
-                "Always consider the user's age, city, symptom duration, severity, and other symptoms in your response. "
-                "Never claim certainty or diagnose a disease. "
-                "If symptoms suggest an emergency, clearly advise the user to seek immediate medical care.\n\n"
-
-                "Be warm, empathetic, conversational, and easy to understand. "
-                "Use short paragraphs and bullet points when helpful. "
-                "Keep responses concise, generally under 250 words.\n\n"
-
-                "For non-health-related questions, politely explain that you are designed to help with health topics only.\n\n"
-
-                "End every medical guidance with: "
-                "'For a definitive diagnosis, please consult a qualified healthcare professional.'"
-            )
-        )
-
+    _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    if _GEMINI_API_KEY:
+        genai.configure(api_key=_GEMINI_API_KEY)
         GEMINI_AVAILABLE = True
-        print("[AI] Gemini 1.5 Flash loaded successfully.")
     else:
         GEMINI_AVAILABLE = False
-        print("[AI] No GEMINI_API_KEY found -- running keyword-fallback mode.")
 except ImportError:
+    genai = None
     GEMINI_AVAILABLE = False
-    print("[AI] google.generativeai not installed -- running keyword-fallback mode.")
+
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "healthbot-dev-secret-key-change-in-prod")
+app.secret_key = "healthbot-dev-secret-key-change-in-prod"
+
+# ── CORS for React dev server ──────────────────────────────────
+@app.after_request
+def add_cors_headers(response):
+    origin = request.headers.get("Origin", "")
+    if origin in ("http://localhost:5173", "http://127.0.0.1:5173"):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+@app.route("/api/<path:p>", methods=["OPTIONS"])
+def api_options(p):
+    """Handle CORS preflight for all /api/* routes."""
+    resp = app.make_default_options_response()
+    return resp
 
 # ─── Database path (created automatically on first run) ───
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -296,12 +281,6 @@ def init_db():
     db.close()
 
 
-# ── Initialise DB on every cold start (works with gunicorn / Render) ──
-# Uses CREATE TABLE IF NOT EXISTS so existing data is never overwritten.
-with app.app_context():
-    init_db()
-
-
 # =============================================================
 #  Auth guard
 # =============================================================
@@ -323,57 +302,51 @@ def login_required(f):
 _chat_sessions = {}
 
 # Keyword fallback (used when API key is absent or quota exceeded)
+# Comprehensive Disease Knowledge Base (20+ Public Health Diseases)
 HEALTH_KB = {
-    # Greetings & Chatbot Meta
-    "hello": "Hello! I am HealthBot. Please tell me your symptoms or ask a health-related question.",
-    "hi": "Hi there! How can I assist you with your health today?",
-    "who are you": "I am HealthBot, your local public health assistant. I can provide guidance on common diseases, symptoms, and prevention.",
-    "help": "I'm here to help! Describe your symptoms (e.g., 'I have a fever and cough') or ask about a disease (e.g., 'What is dengue?').",
+    # Greetings & Meta
+    "hello": "Hello! I am HealthBot AI. Which disease or symptom are you dealing with or seeking information about?",
+    "hi": "Hi there! What disease or symptom would you like to discuss today?",
+    "who are you": "I am HealthBot AI, your public health assistant. I can guide you through symptom assessment, disease information, home care, and prevention.",
+    "help": "I can help you with any disease (Dengue, Malaria, Typhoid, COVID-19, Tuberculosis, Diabetes, Asthma, Flu, etc.) or symptoms (fever, cough, pain). Just mention your condition!",
 
     # Common Symptoms
-    "fever": "Fever is often a sign of infection. Rest well, stay hydrated, and take paracetamol if your temperature exceeds 38.5°C. Consult a doctor if the fever persists beyond 3 days or exceeds 40°C.",
-    "cough": "A cough can be viral (cold, flu) or bacterial. Stay hydrated, inhale steam, and rest. If the cough produces blood, causes severe chest pain, or lasts more than 2 weeks, see a doctor.",
-    "headache": "Headaches are commonly caused by dehydration, stress, lack of sleep, or minor infections. Drink water and rest in a quiet room. If the headache is sudden and incredibly severe, seek emergency care.",
-    "diarrhea": "For diarrhea, your priority is rehydration. Drink ORS (Oral Rehydration Solution) or water with a pinch of salt and sugar. Avoid dairy and greasy foods. Seek help if it lasts over 48 hours or if you see blood.",
-    "stomach": "For an upset stomach, stick to a bland diet (bananas, rice, applesauce, toast - the BRAT diet) and sip water slowly. Avoid spicy, fatty, or highly acidic foods.",
-    "vomiting": "If you are vomiting, do not eat solid food. Sip clear liquids or ORS slowly. Once vomiting stops for a few hours, try plain crackers or toast. Seek urgent care if you cannot keep liquids down for 24 hours.",
-    "rash": "Skin rashes can stem from allergies, heat, or viral infections. Keep the area clean and avoid scratching. If the rash spreads rapidly, blisters, or is accompanied by a high fever, consult a doctor promptly.",
-    "cold": "Common cold symptoms include a runny nose, sneezing, and a mild sore throat. Rest, drink plenty of warm fluids, and take over-the-counter decongestants if necessary. It usually resolves in 7-10 days.",
-    "throat": "For a sore throat, gargle with warm salt water, drink warm tea with honey, and rest your voice. If you have a high fever or difficulty swallowing, consult a healthcare provider for a possible strep test.",
-    "chest pain": "WARNING: Chest pain can indicate a serious heart or lung condition. If the pain is severe, crushing, radiates to your arm or jaw, or is accompanied by shortness of breath, call emergency services immediately.",
-    "fatigue": "Persistent fatigue can be caused by anemia, poor sleep, stress, or a viral infection. Ensure you are getting 8 hours of sleep, eating a balanced diet, and staying hydrated. If it persists for weeks, see a doctor.",
-    "dizzy": "Dizziness can result from dehydration, low blood pressure, or inner ear issues. Sit or lie down immediately to avoid falling. Drink water. If you also experience blurry vision or speech difficulty, seek emergency care.",
-    "muscle pain": "Muscle aches are common with viral fevers like the flu or dengue. Rest and gentle stretching can help. If the pain is localized and severe after an injury, apply ice and elevate the area.",
-    
-    # Specific Diseases
-    "dengue": "Dengue is a mosquito-borne viral infection. Symptoms include high fever, severe headache, and joint pain. Stay strictly hydrated and avoid ibuprofen/aspirin (use paracetamol instead). Seek immediate care if you experience bleeding or severe abdominal pain.",
-    "malaria": "Malaria causes recurring chills, high fever, and sweating. It requires a specific blood test and prescription anti-malarial medication. Consult a doctor immediately if you suspect malaria.",
-    "typhoid": "Typhoid is a bacterial infection from contaminated food/water causing prolonged fever and stomach pain. It requires antibiotics prescribed by a doctor. Prevent it by drinking only boiled or bottled water.",
-    "covid": "COVID-19 symptoms include fever, cough, loss of taste/smell, and fatigue. Isolate yourself, rest, and monitor your oxygen levels. Seek emergency care if you have difficulty breathing.",
-    "diabetes": "Diabetes is a chronic condition affecting blood sugar. Management requires a balanced diet low in refined sugars, regular exercise, and medication as prescribed by an endocrinologist.",
-    "asthma": "Asthma is a lung condition causing breathing difficulty and wheezing. Always keep your prescribed inhaler nearby. If an attack doesn't improve with your inhaler, seek emergency care.",
-    "hypertension": "High blood pressure often has no symptoms but increases heart disease risk. Reduce salt intake, exercise regularly, and take your prescribed medication. If you experience severe headache or chest pain, seek immediate help.",
-    "flu": "Influenza causes sudden fever, body aches, chills, and fatigue. Rest, hydrate, and take antiviral medication if prescribed by a doctor early on. Get an annual flu vaccine to prevent it.",
+    "fever": "Fever is an elevation in body temperature commonly indicating infection or inflammation. It requires careful monitoring, adequate fluid intake, and resting.",
+    "cough": "A cough is a reflex action to clear airways of mucus, irritants, or infection. It can be dry or productive and may stem from viral or bacterial causes.",
+    "headache": "Headaches can stem from stress, dehydration, lack of sleep, eye strain, or underlying infections like dengue, flu, or sinusitis.",
+    "diarrhea": "Diarrhea involves frequent loose or watery bowel movements. The main objective during diarrhea is preventing dehydration through oral rehydration.",
+    "stomach": "Stomach discomfort or pain can be caused by gastritis, indigestion, food poisoning, or infection. Avoid spicy/fatty foods and drink clear fluids.",
+    "vomiting": "Vomiting is the forceful expulsion of stomach contents. Sipping clear liquids or ORS slowly prevents dehydration while resting the stomach.",
+    "rash": "Skin rashes can indicate viral fevers (like Dengue or Measles), allergies, or dermatological conditions. Keep the skin clean and cool.",
+    "cold": "Common cold is a viral upper respiratory infection causing runny nose, sneezing, mild sore throat, and low fatigue.",
+    "throat": "Sore throat is inflammation of the pharynx, often caused by viral colds, flu, or bacterial strep throat. Saltwater gargles provide relief.",
+    "chest pain": "WARNING: Severe chest pain can be an emergency sign of heart or lung conditions. Immediate hospital assessment is crucial if accompanied by breathlessness.",
+    "fatigue": "Extreme tiredness or fatigue can occur during fevers, viral infections, anemia, or metabolic imbalances like diabetes.",
+    "dizzy": "Dizziness or lightheadedness may stem from dehydration, low blood pressure, low blood sugar, or inner ear issues.",
 
-    # General Advice & First Aid
-    "vaccine": "Vaccinations are the most effective public health tool. Common adult vaccines include the annual flu shot, COVID-19 boosters, and Tdap. Check the 'Vaccines' page on your dashboard for more details.",
-    "prevention": "To prevent common diseases: wash your hands frequently with soap, drink clean/boiled water, ensure your food is thoroughly cooked, use mosquito repellents, and maintain a clean environment.",
-    "burn": "For minor burns, immediately run cool (not ice cold) water over the area for 10-15 minutes. Do not pop blisters or apply butter. Cover with a clean, non-stick bandage. For severe or large burns, go to the hospital.",
-    "cut": "For minor cuts or bleeding, apply direct pressure with a clean cloth until it stops. Wash the wound gently with soap and water, apply an antiseptic, and bandage it. If the cut is deep or won't stop bleeding, seek medical help.",
-    "choking": "If someone is choking and cannot cough or breathe, perform the Heimlich maneuver immediately (abdominal thrusts) and call emergency services.",
-    "bleeding": "For heavy bleeding, apply firm direct pressure with a clean cloth, elevate the injured area above the heart if possible, and seek emergency medical assistance immediately.",
-    "fracture": "If you suspect a broken bone (fracture), immobilize the area, apply a cold pack to reduce swelling, and go to the nearest emergency room.",
-    "sprain": "For a sprain, remember RICE: Rest, Ice, Compression, and Elevation. If the pain is severe or you cannot put weight on it, see a doctor for an X-ray.",
-
-    # Mental Health
-    "stress": "Stress can affect both mind and body. Try deep breathing exercises, physical activity, and adequate sleep. If stress feels overwhelming, consider talking to a therapist or counselor.",
-    "anxiety": "Anxiety can cause a racing heart, sweating, and feelings of panic. Focus on slow, deep breaths. If anxiety disrupts your daily life, professional psychological support is highly recommended.",
-    "depression": "Depression causes persistent sadness or loss of interest. It is a medical condition, not a weakness. Please reach out to a mental health professional, a doctor, or a local crisis helpline.",
-    
-    # Diet & Lifestyle
-    "diet": "A healthy diet includes plenty of fruits, vegetables, lean proteins, and whole grains. Limit processed foods, sugar, and excess salt. Stay hydrated by drinking plenty of water.",
-    "weight loss": "Healthy weight loss requires a balance of burning more calories than you consume, regular exercise, and eating nutrient-dense foods. Avoid extreme crash diets.",
-    "sleep": "Good sleep hygiene involves 7-9 hours of sleep, avoiding screens an hour before bed, and maintaining a consistent sleep schedule. Poor sleep can weaken your immune system."
+    # Extensive Disease Database (20+ Diseases)
+    "dengue": "Dengue Fever is a mosquito-borne viral infection caused by the Aedes mosquito. Key symptoms include high sudden fever, severe headache, retro-orbital pain (behind eyes), muscle/joint pain ('breakbone fever'), and skin rash. Strict hydration and avoiding NSAIDs (like Ibuprofen/Aspirin) are mandatory to avoid bleeding risks.",
+    "malaria": "Malaria is a mosquito-borne parasitic infection transmitted by female Anopheles mosquitoes. It manifests with cyclical high fever, severe chills, sweating, headache, and body aches. Requires medical diagnostic blood test (smear/rapid test) and specific prescription antimalarials.",
+    "typhoid": "Typhoid Fever is a bacterial infection caused by Salmonella typhi, transmitted through contaminated food or water. Symptoms include prolonged high fever, abdominal pain, weakness, constipation or diarrhea, and rose spots. Antibiotic therapy prescribed by a doctor is required.",
+    "covid": "COVID-19 is a respiratory illness caused by SARS-CoV-2. Common symptoms include fever, dry cough, fatigue, loss of taste or smell, sore throat, and muscle aches. Oxygen monitoring and isolation precautions are essential.",
+    "flu": "Influenza (Flu) is a contagious viral respiratory infection. Symptoms start abruptly with high fever, body aches, dry cough, sore throat, and severe exhaustion. Annual vaccination helps prevent severe illness.",
+    "cholera": "Cholera is an acute diarrheal infection caused by ingestion of food or water contaminated with Vibrio cholerae bacteria. It causes rapid, severe watery diarrhea ('rice-water stool') leading to extreme dehydration. Immediate ORS and IV fluid replacement is critical.",
+    "tuberculosis": "Tuberculosis (TB) is a bacterial infection caused by Mycobacterium tuberculosis that primarily affects the lungs. Symptoms include persistent cough lasting >2 weeks, coughing up blood, night sweats, unexplained weight loss, and fever. Requires complete multi-month antibiotic regimen (DOTS).",
+    "asthma": "Asthma is a chronic inflammatory disease of the airways causing wheezing, shortness of breath, chest tightness, and coughing. Avoid trigger allergens, stay warm, and keep prescribed rescue inhalers accessible.",
+    "diabetes": "Diabetes Mellitus is a metabolic disorder characterized by elevated blood glucose levels. Symptoms include excessive thirst (polydipsia), frequent urination (polyuria), increased hunger, and fatigue. Requires dietary regulation, exercise, and medical management.",
+    "hypertension": "Hypertension (High Blood Pressure) is a long-term condition where arterial blood pressure is persistently elevated. Often silent, but can cause headaches, dizziness, or chest discomfort. Requires sodium reduction, stress control, and daily medication adherence.",
+    "jaundice": "Jaundice (Hepatitis) is yellowing of the skin and eyes caused by high bilirubin levels, often due to liver inflammation or viral hepatitis (A, B, C, E). Symptoms include dark urine, pale stools, fatigue, and abdominal pain. Requires strict bland diet and medical care.",
+    "chickenpox": "Chickenpox (Varicella) is a highly contagious viral disease causing an itchy, blister-like skin rash, fever, and fatigue. Keep rash clean, apply calamine lotion, and avoid scratching to prevent secondary bacterial infection.",
+    "measles": "Measles (Rubeola) is a viral infection marked by high fever, cough, runny nose, red watery eyes (conjunctivitis), and a characteristic widespread red skin rash. MMR vaccination is the primary prevention.",
+    "pneumonia": "Pneumonia is an infection that inflames the air sacs in one or both lungs, filling them with fluid or pus. Symptoms include fever, chills, cough with phlegm, and sharp chest pain when breathing or coughing. Requires doctor evaluation.",
+    "migraine": "Migraine is a neurological condition causing intense throbbing headache, usually on one side, accompanied by nausea, vomiting, and sensitivity to light and sound. Rest in a quiet, dark room.",
+    "kidney stone": "Kidney stones (Nephrolithiasis) are hard mineral deposits that form in the kidneys. Cause severe sharp flank/back pain radiating to the lower abdomen, painful urination, and blood in urine. Drink 3+ Liters of water daily.",
+    "gastritis": "Gastritis is inflammation of the stomach lining causing burning upper stomach pain, nausea, bloating, and indigestion. Avoid spicy, acidic, fried foods, and avoid taking painkillers on an empty stomach.",
+    "arthritis": "Arthritis is inflammation of one or more joints causing pain, stiffness, swelling, and reduced range of motion. Warm compresses, gentle movement, and anti-inflammatory care help.",
+    "anemia": "Anemia is a deficiency in red blood cells or hemoglobin, leading to reduced oxygen flow. Causes fatigue, pale skin, weakness, dizziness, and cold hands/feet. Iron-rich foods (spinach, jaggery, legumes) and supplements help.",
+    "eczema": "Eczema (Atopic Dermatitis) causes dry, red, itchy, and inflamed skin patches. Keep skin moisturized with gentle emollients and avoid harsh soaps or synthetic fabrics.",
+    "stroke": "Stroke occurs when blood supply to part of the brain is interrupted. Remember FAST: Face drooping, Arm weakness, Speech difficulty, Time to call emergency care immediately!",
+    "appendicitis": "Appendicitis is acute inflammation of the appendix. Causes sudden severe pain starting around the navel and shifting to the lower right abdomen, with fever and vomiting. Requires urgent surgical evaluation."
 }
 # =============================================================
 # Emergency / Severe Symptom Detection
@@ -674,43 +647,196 @@ def nearby_hospitals():
 
 import re
 
-def _keyword_fallback(message: str) -> str:
-    msg_lower = message.lower()
-    
-    # Sort keys by length descending to match longer multi-word phrases first (e.g. 'chest pain')
-    sorted_keys = sorted(HEALTH_KB.keys(), key=len, reverse=True)
-    
-    for key in sorted_keys:
-        # Use regex to match whole words only, avoiding substring matches like 'hi' in 'while'
-        if re.search(rf'\b{re.escape(key)}\b', msg_lower):
-            return HEALTH_KB[key]
-            
-    return ("I'm currently running in offline mode. I can answer questions about common symptoms "
-            "(e.g., fever, cough, pain location). Always consult a qualified healthcare professional for diagnosis.")
+def _interactive_fallback(message: str, sess: dict) -> str:
+    """
+    Multi-turn interactive state-machine fallback for ANY disease or symptom.
+    Executes a 5-step conversation (Age -> City -> Duration -> Severity -> Symptoms -> Comprehensive Advisory Report)
+    when offline or when Gemini API is unavailable.
+    """
+    msg_lower = message.lower().strip()
+
+    # Reset command
+    if msg_lower in ["reset", "clear", "start over", "new query", "hello", "hi"]:
+        sess.pop("conv_step", None)
+        sess.pop("conv_disease", None)
+        sess.pop("conv_age", None)
+        sess.pop("conv_city", None)
+        sess.pop("conv_duration", None)
+        sess.pop("conv_severity", None)
+        sess.pop("conv_symptoms", None)
+        if msg_lower in ["hello", "hi"]:
+            return "Hello! I am HealthBot AI. Which disease or symptom are you dealing with or seeking advice on?"
+        return "Conversation reset. Which disease or symptom would you like to discuss now?"
+
+    # Current step
+    step = sess.get("conv_step", 0)
+
+    # Step 0: User mentions a disease or symptom
+    if step == 0:
+        detected_disease = None
+        for key in sorted(HEALTH_KB.keys(), key=len, reverse=True):
+            if re.search(rf'\b{re.escape(key)}\b', msg_lower):
+                detected_disease = key.title()
+                break
+        
+        if not detected_disease:
+            cleaned = re.sub(r'^(i have|what is|tell me about|information on|treatment for|symptoms of|query for)\s+', '', msg_lower, flags=re.IGNORECASE).strip()
+            detected_disease = cleaned.title() if cleaned else message.strip().title()
+
+        sess["conv_disease"] = detected_disease
+        sess["conv_step"] = 1
+        return (f"I am here to guide you regarding **{detected_disease}**. "
+                f"To provide you with safe, personalized health advice and guidance, "
+                f"could you please tell me your **age**?")
+
+    # Step 1: Age -> Ask City
+    elif step == 1:
+        sess["conv_age"] = message.strip()
+        sess["conv_step"] = 2
+        disease = sess.get("conv_disease", "your condition")
+        return f"Thank you. Which **city or location** are you currently in? (This helps check for local health advisories and hospital options)."
+
+    # Step 2: City -> Ask Duration
+    elif step == 2:
+        sess["conv_city"] = message.strip()
+        sess["conv_step"] = 3
+        disease = sess.get("conv_disease", "your condition")
+        return f"Got it. How long have you had symptoms or been dealing with **{disease}**?"
+
+    # Step 3: Duration -> Ask Severity
+    elif step == 3:
+        sess["conv_duration"] = message.strip()
+        sess["conv_step"] = 4
+        return f"Understood. Would you describe the current symptoms as **mild**, **moderate**, or **severe**?"
+
+    # Step 4: Severity -> Ask Associated Symptoms
+    elif step == 4:
+        severity_val = message.strip()
+        sess["conv_severity"] = severity_val
+        
+        # Check for severe emergency
+        if "severe" in severity_val.lower() or "emergency" in severity_val.lower() or "critical" in severity_val.lower():
+            city = sess.get("conv_city", "your area")
+            disease = sess.get("conv_disease", "condition")
+            sess["conv_step"] = 0
+            return (
+                f"🚨 **EMERGENCY WARNING — SEVERE CASE DETECTED**\n\n"
+                f"Because you indicated severe symptoms for **{disease}**, please seek **IMMEDIATE EMERGENCY MEDICAL CARE**.\n\n"
+                f"**Immediate Safety & First Aid Steps:**\n"
+                f"- Stay calm, sit or lie down in a safe position.\n"
+                f"- Do not perform heavy physical exertion.\n"
+                f"- If breathing difficulty or chest pain occurs, loosen tight clothing.\n"
+                f"- Have someone accompany you or call local emergency services immediately.\n\n"
+                f"Searching for hospitals near **{city}**. Please use the hospital finder on your right or contact emergency services immediately."
+            )
+
+        sess["conv_step"] = 5
+        return f"Are there any other associated symptoms present (such as fever, body pain, rash, nausea, cough, or weakness)?"
+
+    # Step 5: Associated Symptoms -> Generate Comprehensive Advisory
+    elif step == 5:
+        sess["conv_symptoms"] = message.strip()
+        disease   = sess.get("conv_disease", "Health Condition")
+        age       = sess.get("conv_age", "N/A")
+        city      = sess.get("conv_city", "N/A")
+        duration  = sess.get("conv_duration", "N/A")
+        severity  = sess.get("conv_severity", "N/A")
+        symptoms  = sess.get("conv_symptoms", "N/A")
+
+        # Reset state for next query
+        sess["conv_step"] = 0
+
+        # Retrieve specific disease kb info
+        dis_key = disease.lower()
+        kb_info = ""
+        for k in HEALTH_KB:
+            if k in dis_key:
+                kb_info = HEALTH_KB[k]
+                break
+
+        if not kb_info:
+            kb_info = f"{disease} requires careful symptom monitoring, fluid hydration, adequate rest, and professional medical evaluation."
+
+        report = (
+            f"📋 **Personalized Health Advisory Report for {disease}**\n\n"
+            f"👤 **Patient Profile Summary:**\n"
+            f"- **Condition/Disease:** {disease}\n"
+            f"- **Age:** {age}\n"
+            f"- **Location:** {city}\n"
+            f"- **Duration:** {duration}\n"
+            f"- **Severity Level:** {severity}\n"
+            f"- **Associated Symptoms:** {symptoms}\n\n"
+
+            f"🩺 **1. Medical Overview & Key Facts:**\n"
+            f"{kb_info}\n\n"
+
+            f"🏠 **2. Home Care & Rest Protocol:**\n"
+            f"- Ensure complete bed rest to allow your immune system to recover.\n"
+            f"- Monitor body temperature, pulse, and symptom changes every 4-6 hours.\n"
+            f"- Keep the room well-ventilated, clean, and comfortable.\n\n"
+
+            f"🥗 **3. Food, Hydration & Nutrition Advice:**\n"
+            f"- Drink plenty of clean, boiled water, ORS (Oral Rehydration Solution), coconut water, or clear soups (2.5–3 Liters/day).\n"
+            f"- Eat light, easily digestible meals (rice porridge, bananas, steamed vegetables, soups).\n"
+            f"- Avoid greasy, spicy, processed foods, carbonated drinks, and alcohol.\n\n"
+
+            f"💊 **4. Over-The-Counter (OTC) Guidance & Medication Safety:**\n"
+            f"- For fever or mild body aches, **Paracetamol** (Acetaminophen) is generally recommended when used as per package directions.\n"
+            f"- ⚠️ **CRITICAL WARNING:** Avoid NSAIDs like **Ibuprofen** or **Aspirin** if dengue or viral fevers are suspected, as they increase bleeding risks.\n"
+            f"- Do NOT take antibiotics without a doctor's explicit prescription.\n\n"
+
+            f"🛡️ **5. Prevention & Hygiene Measures:**\n"
+            f"- Maintain hand hygiene by washing hands frequently with soap and water.\n"
+            f"- If contagious, isolate in a well-ventilated room and wear a protective mask.\n"
+            f"- Eliminate standing water around your living space to prevent vector breeding.\n\n"
+
+            f"🚨 **6. Red-Flag Warning Signs (Seek Urgent Medical Care if present):**\n"
+            f"- Persistent high fever (>39°C or >102°F) lasting over 3 days.\n"
+            f"- Difficulty breathing, shortness of breath, or sharp chest pain.\n"
+            f"- Persistent vomiting or severe diarrhea leading to dehydration.\n"
+            f"- Unexplained bleeding (nose, gums, skin bruising, dark stools).\n"
+            f"- Confusion, extreme lethargy, or fainting.\n\n"
+            f"For a definitive diagnosis and prescription treatment, please consult a qualified medical professional in {city}."
+        )
+        return report
+
+    sess["conv_step"] = 0
+    return "Could you please rephrase your health question or mention the disease you would like help with?"
 
 
-def gemini_respond(message: str, user_id: int) -> str:
+def gemini_respond(message: str, user_id: int, sess: dict = None) -> str:
     """
-    Send message to Gemini 1.5 Flash with multi-turn conversation context.
-    Falls back to keyword matching if Gemini is not configured.
+    Send message to Google Gemini with multi-turn conversation context.
+    Falls back to interactive multi-turn state machine if Gemini is unavailable or quota exceeded.
     """
-    if not GEMINI_AVAILABLE:
-        return _keyword_fallback(message)
+    if not GEMINI_AVAILABLE or genai is None:
+        print("[Gemini] API not configured — using interactive state machine fallback.")
+        return _interactive_fallback(message, sess or {})
 
     try:
-        # Retrieve or create chat session for this user
+        # Retrieve or create a Gemini chat session for this user
         if user_id not in _chat_sessions:
-            _chat_sessions[user_id] = _gemini_model.start_chat(history=[])
+            gemini_model = genai.GenerativeModel(
+                model_name=GEMINI_MODEL,
+                system_instruction=SYSTEM_INSTRUCTION
+            )
+            _chat_sessions[user_id] = gemini_model.start_chat(history=[])
 
-        chat = _chat_sessions[user_id]
-        response = chat.send_message(message)
+        chat_session = _chat_sessions[user_id]
+        response = chat_session.send_message(message)
         return response.text.strip()
 
     except Exception as e:
-        error_msg = str(e)
-        print(f"[Gemini Error] {error_msg}")
-        # Silently fall back — never show raw error to user
-        return _keyword_fallback(message)
+        err_str = str(e).lower()
+        if "quota" in err_str or "resource_exhausted" in err_str or "429" in err_str:
+            print(f"[Gemini] Quota exceeded: {e}")
+        elif "api_key" in err_str or "invalid" in err_str:
+            print(f"[Gemini] API key error: {e}")
+        else:
+            print(f"[Gemini Error] {e}")
+        # Remove stale session so next call starts fresh
+        _chat_sessions.pop(user_id, None)
+        return _interactive_fallback(message, sess or {})
 
 
 # =============================================================
@@ -837,179 +963,23 @@ def api_chat():
             ).translate(message)
         else:
             english_message = message
-
     except Exception:
         english_message = message
 
+    # 2. Emergency detection
+    emergency = detect_emergency(english_message)
 
-    # =========================================================
-    # 2. Conversation State Management
-    # =========================================================
-    msg_lower = english_message.lower()
-    emergency = False
-    
-    symptoms_list = ["fever", "cough", "headache", "chest pain", "stomach pain", "vomiting", "diarrhea", "body pain", "cold"]
-    chat_state = session.get("chat_state", "")
+    # Keep emergency flag if bot previously asked for city/location
+    last_reply_lower = session.get("last_bot_reply", "").lower()
+    if "city" in last_reply_lower or "location" in last_reply_lower or "hospital" in last_reply_lower:
+        emergency = True
 
-    # Thank you handler — always respond warmly regardless of state
-    thankyou_words = ["thank you", "thanks", "thank u", "thankyou", "thx", "ty", "நன்றி", "ధన్యవాదాలు", "धन्यवाद"]
-    if any(t in msg_lower for t in thankyou_words):
-        session["chat_state"] = ""  # Reset any ongoing state
-        english_reply = (
-            "You're welcome! 😊\n\n"
-            "Get well soon and take care of yourself! 🌿\n\n"
-            "If you ever need health guidance again, feel free to chat with me anytime. I'm always here to help! 💙"
-        )
-    
-    # Step 1: Detect symptoms and start flow
-    elif any(s in msg_lower for s in symptoms_list) and chat_state == "":
-        session["chat_state"] = "waiting_for_age"
-        english_reply = "I'm sorry you're not feeling well.\nMay I know your age?"
-        
-    # Step 2: Waiting for age
-    elif chat_state == "waiting_for_age":
-        session["user_age"] = english_message
-        session["chat_state"] = "waiting_for_duration"
-        english_reply = "How long have you had this problem?"
-        
-    # Step 3: Waiting for duration
-    elif chat_state == "waiting_for_duration":
-        session["symptom_days"] = english_message
-        session["chat_state"] = "waiting_for_symptoms"
-        english_reply = "Can you describe your symptoms in more detail?"
-        
-    # Step 4: Waiting for symptoms details
-    elif chat_state == "waiting_for_symptoms":
-        session["symptoms"] = english_message
-        session["chat_state"] = "waiting_for_severity"
-        english_reply = "Is it mild, moderate, or severe?"
-        
-    # Step 5: Waiting for severity
-    elif chat_state == "waiting_for_severity":
-        session["severity"] = english_message
-        session["chat_state"] = "" # Reset state
-        
-        is_severe = "severe" in msg_lower or detect_emergency(session.get("symptoms", "")) or detect_emergency(english_message)
-        
-        if is_severe:
-            emergency = True
-            prompt = f"""
-User Age: {session.get('user_age')}
-Duration: {session.get('symptom_days')}
-Symptoms: {session.get('symptoms')}
-Severity: {english_message}
+    # 3. Get AI response (Gemini or interactive multi-turn state machine fallback)
+    english_reply = gemini_respond(english_message, session["user_id"], session)
 
-This is a severe case.
-Respond exactly in this structure:
-
-⚠️ Your symptoms may require urgent medical attention.
-
-Possible reasons:
-- [Reason 1]
-- [Reason 2]
-
-Immediate First Aid & Tips:
-✅ [Safety step 1]
-✅ [Safety step 2]
-✅ [Helpful tip]
-
-Please share your city/location so I can find nearby hospitals.
-"""
-        else:
-            prompt = f"""
-User Age: {session.get('user_age')}
-Duration: {session.get('symptom_days')}
-Symptoms: {session.get('symptoms')}
-Severity: {english_message}
-
-This is a mild/moderate case. Do NOT ask for location.
-Respond exactly in this structure:
-
-Based on your symptoms:
-
-Possible reasons:
-- [Reason 1]
-- [Reason 2]
-
-Home care:
-✅ [Tip 1]
-✅ [Tip 2]
-
-Food suggestions:
-✅ [Food 1]
-
-Consult a doctor if:
-⚠️ [Warning sign]
-"""
-        english_reply = gemini_respond(prompt, session["user_id"])
-        
-        # If Gemini is unavailable (quota/offline), use built-in structured response
-        if "offline mode" in english_reply.lower() or "quota" in english_reply.lower() or "api" in english_reply[:10].lower():
-            symptoms_text = session.get('symptoms', 'your symptoms')
-            age = session.get('user_age', 'you')
-            days = session.get('symptom_days', 'a few days')
-            
-            if is_severe:
-                english_reply = f"""⚠️ Your symptoms may require urgent medical attention.
-
-Based on what you've shared (Age: {age}, Duration: {days}, Symptoms: {symptoms_text}):
-
-Possible reasons:
-- Infection or inflammation
-- Dehydration or electrolyte imbalance
-- Underlying medical condition that needs attention
-
-Immediate First Aid & Tips:
-✅ Lie down and rest immediately — avoid any physical exertion
-✅ Stay calm and breathe slowly and deeply
-✅ Drink small sips of water if you are conscious and able to swallow
-✅ Do NOT take any medicine without medical advice in this condition
-✅ Ask someone to stay with you — do not be alone
-
-Please share your city/location so I can find nearby hospitals for you."""
-            else:
-                english_reply = f"""Based on your symptoms (Age: {age}, Duration: {days}, Symptoms: {symptoms_text}):
-
-Possible reasons:
-- Common viral or bacterial infection
-- Fatigue, stress, or dietary imbalance
-- Seasonal changes affecting your health
-
-Home care:
-✅ Rest as much as possible — avoid strenuous activity
-✅ Drink plenty of fluids (water, coconut water, ORS if needed)
-✅ Monitor your temperature/symptoms every few hours
-✅ Take paracetamol for fever or pain if needed (follow label instructions)
-
-Food suggestions:
-✅ Light foods: rice porridge (kanji), idli, soups, bananas
-✅ Avoid oily, spicy, or heavy food
-✅ Warm liquids like ginger tea or turmeric milk can help
-
-Consult a doctor if:
-⚠️ Symptoms worsen or do not improve within 2-3 days
-⚠️ High fever (above 39°C / 102°F) that doesn't reduce
-⚠️ Difficulty breathing, chest pain, or severe vomiting
-
-For a definitive diagnosis, please consult a qualified healthcare professional."""
-
-    else:
-        # General chat or follow-up
-        if detect_emergency(english_message):
-            emergency = True
-        
-        # Keep emergency flag true if we are in the middle of a severe follow-up (like asking for city)
-        last_reply = session.get("last_bot_reply", "").lower()
-        if "which city are you currently in" in last_reply:
-            emergency = True
-            
-        english_reply = gemini_respond(english_message, session["user_id"])
-    
     session["last_bot_reply"] = english_reply
 
-    # =========================================================
-    # 4. Translate reply back to user's language
-    # =========================================================
+    # 4. Translate reply back to user language
     try:
         if language != "en" and GoogleTranslator:
             reply = GoogleTranslator(source="en", target=language).translate(english_reply)
@@ -1018,9 +988,7 @@ For a definitive diagnosis, please consult a qualified healthcare professional."
     except Exception:
         reply = english_reply
 
-    # =========================================================
     # 5. Persist chat history
-    # =========================================================
     try:
         query_db(
             "INSERT INTO chat_history (user_id, message, response, language) VALUES (?,?,?,?)",
@@ -1030,17 +998,12 @@ For a definitive diagnosis, please consult a qualified healthcare professional."
     except Exception as e:
         print(f"[Database Error] {e}")
 
-    # =========================================================
-    # 6. Return response to chat.html
-    # =========================================================
+    # 6. Return response
     return jsonify({
         "reply": reply,
         "emergency": emergency,
         "timestamp": datetime.now().strftime("%H:%M")
     })
-    # =============================================================
-# Nearby Hospital Search
-# =============================================================
 
 
 # =============================================================
@@ -1274,6 +1237,95 @@ def search_hospitals():
 def api_alerts():
     alerts = query_db("SELECT * FROM health_alerts ORDER BY date_issued DESC")
     return jsonify({"alerts": [dict(a) for a in alerts]})
+
+
+@app.route("/api/diseases")
+def api_diseases():
+    disease_list = query_db("SELECT * FROM diseases ORDER BY name ASC")
+    return jsonify({"diseases": [dict(d) for d in disease_list]})
+
+
+@app.route("/api/vaccines")
+def api_vaccines():
+    vaccine_list = query_db(
+        "SELECT v.*, d.name AS disease_name "
+        "FROM vaccines v JOIN diseases d ON v.disease_id = d.id "
+        "ORDER BY d.name, v.vaccine_name"
+    )
+    return jsonify({"vaccines": [dict(v) for v in vaccine_list]})
+
+
+# =============================================================
+#  JSON Auth API  (for React / SPA frontend)
+# =============================================================
+@app.route("/api/register", methods=["POST"])
+def api_register():
+    """Register a new user and return JSON."""
+    data     = request.get_json(silent=True) or {}
+    name     = data.get("name", "").strip()
+    email    = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+    lang     = data.get("preferred_language", "en")
+
+    if not all([name, email, password]):
+        return jsonify({"error": "All fields are required."}), 400
+    if len(password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters."}), 400
+
+    try:
+        query_db(
+            "INSERT INTO users (name, email, password_hash, preferred_language) VALUES (?,?,?,?)",
+            (name, email, generate_password_hash(password), lang),
+            commit=True
+        )
+        return jsonify({"ok": True, "message": "Account created! Please log in."}), 201
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "An account with that email already exists."}), 409
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    """Authenticate user and set server-side session. Returns JSON."""
+    data     = request.get_json(silent=True) or {}
+    email    = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required."}), 400
+
+    user = query_db("SELECT * FROM users WHERE email = ?", (email,), one=True)
+
+    if user and check_password_hash(user["password_hash"], password):
+        session["user_id"]  = user["id"]
+        session["username"] = user["name"]
+        session["lang"]     = user["preferred_language"]
+        return jsonify({
+            "ok":   True,
+            "name": user["name"],
+            "lang": user["preferred_language"]
+        })
+    else:
+        return jsonify({"error": "Invalid email or password."}), 401
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    """Clear the server-side session. Returns JSON."""
+    session.clear()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/me")
+def api_me():
+    """Return the currently logged-in user's info, or 401 if not logged in."""
+    if "user_id" not in session:
+        return jsonify({"error": "Not authenticated."}), 401
+    return jsonify({
+        "ok":      True,
+        "name":    session.get("username"),
+        "lang":    session.get("lang", "en"),
+        "user_id": session.get("user_id")
+    })
 
 
 @app.route("/api/history")

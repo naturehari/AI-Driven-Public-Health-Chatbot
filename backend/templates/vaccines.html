@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Vaccines — HealthBot AI{% endblock %}
+
+{% block body %}
+<div class="app-wrapper">
+
+  {% include "partials/sidebar.html" %}
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn p-0 d-md-none" id="sidebarToggle" style="color:#fff;">
+          <i class="bi bi-list fs-4"></i>
+        </button>
+        <span class="topbar-title">
+          <i class="bi bi-shield-plus me-2" style="color:#4ade80;"></i>Vaccination Module
+        </span>
+      </div>
+      <div style="color:rgba(255,255,255,0.55);font-size:0.85rem;">
+        {{ vaccines|length }} vaccines listed
+      </div>
+    </div>
+
+    <div class="content-area">
+      <div class="mb-5">
+        <h2 class="fw-bold mb-2">Vaccination Information</h2>
+        <p style="color:rgba(255,255,255,0.5);max-width:560px;font-size:0.95rem;">
+          Stay protected. Find recommended vaccines, age groups, and descriptions
+          for diseases tracked in our system.
+        </p>
+      </div>
+
+      <div class="row g-4">
+        {% for vaccine in vaccines %}
+        <div class="col-12 col-md-6">
+          <div class="vaccine-card h-100">
+            <div class="d-flex align-items-start gap-3 mb-3">
+              <div style="width:44px;height:44px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">
+                💉
+              </div>
+              <div>
+                <h6 class="fw-bold mb-0">{{ vaccine.vaccine_name }}</h6>
+                <span class="badge" style="background:rgba(29,111,168,0.2);color:#60a5fa;border:1px solid rgba(29,111,168,0.3);font-size:0.7rem;margin-top:0.25rem;border-radius:999px;">
+                  {{ vaccine.disease_name }}
+                </span>
+              </div>
+            </div>
+            <div class="mb-2" style="font-size:0.8rem;color:rgba(255,255,255,0.5);">
+              <i class="bi bi-person-check me-1" style="color:#4ade80;"></i>
+              <strong style="color:rgba(255,255,255,0.75);">Recommended Age:</strong> {{ vaccine.recommended_age }}
+            </div>
+            <p style="font-size:0.85rem;color:rgba(255,255,255,0.65);line-height:1.6;margin:0;">
+              {{ vaccine.description }}
+            </p>
+          </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+          <div class="text-center py-5" style="color:rgba(255,255,255,0.4);">
+            <i class="bi bi-database-x fs-1 mb-3 d-block"></i>
+            No vaccine data. Run <code>schema.sql</code> to seed the database.
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    document.querySelector('.sidebar').classList.toggle('open');
+  });
+</script>
+{% endblock %}
