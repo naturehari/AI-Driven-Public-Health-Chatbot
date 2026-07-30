@@ -92,6 +92,24 @@ except ImportError:
 
 
 app = Flask(__name__)
+def create_users_table():
+    db = sqlite3.connect("database.db")
+    cursor = db.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        preferred_language TEXT
+    )
+    """)
+
+    db.commit()
+    db.close()
+
+create_users_table()
 app.secret_key = "healthbot-dev-secret-key-change-in-prod"
 
 # ── CORS for React dev server ──────────────────────────────────
