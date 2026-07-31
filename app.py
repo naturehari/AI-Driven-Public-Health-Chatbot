@@ -1361,6 +1361,8 @@ def api_history():
 #  Bootstrap & Run
 # =============================================================
 import os
+with app.app_context():
+    init_db()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
